@@ -1,11 +1,32 @@
 'use client';
 import Link from 'next/link';
+import {useEffect,useState} from 'react';
 import {motion} from 'motion/react';
 import {ArrowRight,ArrowUpRight,AudioLines,Braces,Check,Code2,Globe2,Layers3,Mic2,MoveUpRight,ShieldCheck,Volume2,Workflow,Zap} from 'lucide-react';
 import {models} from '../lib/data';
 export function Eyebrow({children}:{children:React.ReactNode}){return <div className="eyebrow"><span className="eyebrow-dash"/>{children}</div>}
 export function SectionHeading({eyebrow,title,desc}:{eyebrow:string,title:string,desc?:string}){return <div className="section-heading"><Eyebrow>{eyebrow}</Eyebrow><h2>{title}</h2>{desc&&<p>{desc}</p>}</div>}
-export function ModelGrid({limit}:{limit?:number}){const icons=[Mic2,Volume2,Workflow,Globe2,AudioLines];return <div className="model-grid">{models.slice(0,limit).map((m,i)=>{const Icon=icons[i];return <motion.div key={m.slug} className="motion-card" whileHover={{y:-7}} transition={{type:"spring",stiffness:280,damping:24}}><Link className="model-card" href={'/models/'+m.slug} key={m.slug}><div className="model-card-top"><span className="model-icon"><Icon size={23} strokeWidth={1.7}/></span><ArrowUpRight size={18}/></div><div className="model-number">MODEL / 0{i+1}</div><h3>{m.name}</h3><span className="model-tag">{m.tag}</span><p>{m.summary}</p><div className="model-card-bottom"><code>{m.id}</code><span>View specifications <ArrowRight size={14}/></span></div></Link></motion.div>})}</div>}
+export function ModelGrid({limit}:{limit?:number}){
+ const [items,setItems]=useState<{id:string;name:string;capability:string;description:string}[]>([]);
+ const [state,setState]=useState<'loading'|'ready'|'error'>('loading');
+ useEffect(()=>{fetch('/api/public/catalog',{cache:'no-store'}).then(async response=>{
+  if(!response.ok)throw new Error('Model catalog offline');
+  return response.json();
+ }).then(data=>{setItems(data.models||[]);setState('ready')}).catch(()=>setState('error'))},[]);
+ if(state==='loading')return <p className="muted">Loading active models…</p>;
+ if(state==='error')return <p className="muted">Live model catalog is currently unavailable.</p>;
+ if(!items.length)return <p className="muted">Production speech models will be listed when tested weights and inference services have been enabled.</p>;
+ const icons=[Mic2,Volume2,Workflow,Globe2,AudioLines];
+ return <div className="model-grid">{items.slice(0,limit).map((m,i)=>{
+  const Icon=icons[['stt','tts','agent','multilingual','v2v'].indexOf(m.capability)]||icons[i%icons.length];
+  return <motion.div key={m.id} className="motion-card" whileHover={{y:-7}} transition={{type:'spring',stiffness:280,damping:24}}>
+  <Link className="model-card" href="/docs"><div className="model-card-top"><span className="model-icon"><Icon size={23}/></span><ArrowUpRight size={18}/></div>
+  <div className="model-number">ACTIVE MODEL / {String(i+1).padStart(2,'0')}</div>
+  <h3>{m.name}</h3><span className="model-tag">{m.capability}</span><p>{m.description}</p>
+  <div className="model-card-bottom"><code>{m.id}</code><span>API documentation <ArrowRight size={14}/></span></div>
+  </Link></motion.div>;
+ })}</div>;
+}
 export function CTA({label='Build with voice.',description='Bring speech recognition, synthesis and conversational interfaces into the products people already use.'}:{label?:string,description?:string}){return <section className="cta-section"><div className="container cta-inner"><div><Eyebrow>WHAT COMES NEXT</Eyebrow><h2>{label}</h2><p>{description}</p></div><div className="cta-actions"><Link className="button button-light" href="/docs">Read the documentation <ArrowUpRight size={17}/></Link><Link className="button button-ghost-light" href="/contact">Talk to us <ArrowRight size={17}/></Link></div><div className="cta-watermark"><AudioLines size={300} strokeWidth={.6}/></div></div></section>}
 export function PageIntro({index,title,desc}:{index:string,title:string,desc:string}){return <div className="page-intro container"><Eyebrow>{index}</Eyebrow><h1>{title}</h1><p>{desc}</p></div>}
 export function FeatureRows(){return <div className="features-rows"><div><Mic2/><h3>Listen with precision</h3><p>Turn recorded or streaming speech into useful text. Control input formats, target languages and output structures.</p></div><div><Volume2/><h3>Speak with character</h3><p>Deliver responses in a voice that matches the product. Change voices and supported languages without changing the public API.</p></div><div><Layers3/><h3>Compose what you need</h3><p>Connect speech input, an OpenRouter LLM and speech output to power your own conversational flows.</p></div></div>}
