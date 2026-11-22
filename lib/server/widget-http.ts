@@ -10,7 +10,7 @@ export function cors(origin:string){
 }
 export async function widgetAccess(req:NextRequest,id:string){
  if(!validUuid(id))return null;
- const origin=req.headers.get('origin');
+ const origin=req.headers.get('origin')||(req.method==='GET'?new URL(req.url).origin:null);
  if(!origin)return null;
  const agent=await publicAgent(id,origin);
  return agent?{agent,origin,headers:cors(origin)}:null;
