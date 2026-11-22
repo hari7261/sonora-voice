@@ -8,6 +8,6 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
   const {agent,headers}=access;
   return Response.json({id:agent.id,name:agent.name,greeting:agent.greeting,
     accentColor:agent.accent_color,interactionMode:agent.interaction_mode,
-    language:agent.language_code,voiceReady:!!process.env.SHERPA_INFERENCE_URL},{headers});
+    language:agent.language_code,voiceReady:!!process.env.SHERPA_INFERENCE_URL&&!!process.env.SHERPA_WORKER_SECRET},{headers});
  }catch{return widgetError('Agent unavailable',503);}
 }
