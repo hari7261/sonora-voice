@@ -1,60 +1,39 @@
-# Vāchaspati AI — Voice Infrastructure Website
+# Vāchaspati AI — Voice Agent Platform
 
-A responsive, multipage Next.js + TypeScript website for the proposed Vāchaspati AI speech API and embeddable voice-agent platform.
+Next.js + TypeScript frontend, with a PostgreSQL-backed custom email/password identity layer. Supabase is used **only as the Postgres database host**; this project does **not** use Supabase Auth.
 
-## Current state
+## Current implementation
 
-This is a polished **front-end prototype**, not a deployed speech API. Interactive components are local demos, pricing is illustrative, and all API endpoints are proposed integration contracts. No Supabase project, OpenRouter key, Sherpa-ONNX model weights, DNS, payment integration or deployment credentials were provided, so none are falsely represented as connected.
+- Premium multipage website and Motion animations.
+- Custom auth endpoints: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
+- Registration and login forms at `/signup` and `/login`.
+- Authenticated `/dashboard` showing workspaces from the real database.
+- Salted scrypt password hashes, opaque random session tokens (SHA-256 hashes in DB), HttpOnly/Secure/SameSite cookies, origin checks, and database-backed login attempt limiting.
+- Initial schema for agents, model catalog, API keys, quotas, credit ledger, conversations, and usage. Those voice-service features are **not yet operational**.
 
-## Stack
+## Schema naming requirement
 
-- Next.js App Router + TypeScript
-- Pure CSS design system with dark and light themes
-- Lucide icons
-- Custom SVG editorial artwork
-- No Python
-- Production integration target: Supabase + OpenRouter + `sherpa-onnx-node` in a separately scalable Node.js inference process
+Every table begins with `vachaspati_` and resides in the private schema `vachaspati_private`. For example:
 
-## Run
+- `vachaspati_private.vachaspati_users`
+- `vachaspati_private.vachaspati_sessions`
+- `vachaspati_private.vachaspati_agents`
+- `vachaspati_private.vachaspati_api_keys`
 
-```bash
-npm install
-npm run dev
-```
+The schema is intentionally not exposed through Supabase's Data API. Server-side parameterized SQL must enforce workspace membership on every resource access. No `auth.users` references, `auth.uid()`-based policies, or Supabase Auth SDKs.
 
-Open http://localhost:3000. Production build: `npm run build && npm start`.
+## Configuration and deployment
 
-## Pages
+1. Use a dedicated Supabase PostgreSQL project (do **not** assume an existing unrelated project is safe to modify).
+2. Run `supabase/migrations/202611230001_core_platform.sql` against that database after reviewing it.
+3. Copy `.env.example` to `.env.local`, and supply `DATABASE_URL` using the **Transaction pooler** URL from Supabase Dashboard → Connect. Keep it server-side and secret. Use TLS in production.
+4. Set `APP_ORIGIN` to the exact production site origin.
+5. Run `npm install`, then `npm run build` and `npm run dev`.
 
-- `/` — 14 major landing-page sections
-- `/platform` — platform overview
-- `/models` — model catalog
-- `/models/[slug]` — five model detail pages
-- `/agents` — voice agent and live editor preview
-- `/api` — API overview
-- `/docs` — quickstart, auth, STT, TTS, WS, language, embed, Next.js, credits, errors, security, production checklist
-- `/pricing` — interactive indicative tiers
-- `/faq` — FAQ and hardcoded bot with browser voice playback
-- `/about`, `/contact` — supporting pages
+The app does not perform DB setup at build time; auth endpoints require an actual database connection at runtime. Until migration and environment variables are configured, they will return an unavailable-service error.
 
-## Next development steps
+## Security and production readiness
 
-1. Set up Supabase Auth with RLS-scoped organizations, projects, API keys, quotas and immutable credit ledger.
-2. Implement native Sherpa-ONNX inference in a long-running Node.js worker and run model license audits.
-3. Implement the documented `/v1` API endpoints and WebSocket gateway with real audio frames.
-4. Connect OpenRouter on server-side only with secret credentials and consent-aware conversation history.
-5. Build tenant-aware agent publishing, production `voice-widget.js`, domain allowlists and short-lived tokens.
-6. Add rate limiting, atomic credit accounting, audio security controls and operational observability.
-7. Run accessibility and cross-browser tests; evaluate model accuracy per language before promising availability.
+Password hashing, session expiration and revocation, CSRF origin protection and basic login throttling are implemented. **Still required before public production launch:** verified email delivery and verification, secure password recovery, proper abuse controls at the edge (IP-spoof-resistant rate limiting), operational audit logs, automated integration/security tests, and a CI-verified production build.
 
-## Design
-
-The design intentionally avoids stock AI gradients, sparkle illustrations, excessive animation, generic inflated copy, and unnecessary uniform cards. It uses steel-black headings in light mode, off-white headings in dark mode, editorial image compositions, structured technical previews, subtle terracotta accent, and typefaces Manrope, DM Sans and DM Mono.
-
-## Disclaimer
-
-An installed tool for directly authoring/deploying a website on a connected website-building service was not available in this session, so the deliverable is an editable Next.js source project. No build or browser preview was validated in this isolated runtime because npm dependencies were unavailable offline.
-
-## Animation and accessibility
-
-Uses Motion for React (`motion/react`) for route reveals, viewport entry animations, responsive interactive cards, animated FAQ answers, and a hero typewriter. Animations respect operating-system reduced-motion settings. Design uses premium display typography with high-contrast black/white themes.
+Speech inference, OpenRouter live agent execution, usage billing, embed gateway and real model deployment still require separate implementation and infrastructure. Public-facing demo components are not connected to paid services and should not be described as live APIs.
