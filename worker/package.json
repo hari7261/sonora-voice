@@ -1,0 +1,13 @@
+{
+  "name": "vachaspati-sherpa-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check server.mjs"
+  },
+  "dependencies": {
+    "sherpa-onnx-node": "2.0.2"
+  }
+}
