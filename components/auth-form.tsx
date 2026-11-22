@@ -43,6 +43,7 @@ export function AuthForm({mode}:{mode:'login'|'register'}){
         <label>Email address<input type="email" autoComplete="email" required maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label>
         <label>Password<input type="password" autoComplete={register?'new-password':'current-password'} required minLength={12} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 12 characters"/></label>
         {register&&<label>Confirm password<input type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={confirmation} onChange={e=>setConfirmation(e.target.value)} placeholder="Re-enter password"/></label>}
+        {!register&&<Link className="auth-forgot" href="/forgot-password">Forgot your password?</Link>}
         {error&&<p className="auth-error" role="alert">{error}</p>}
         <button className="button button-dark auth-submit" type="submit" disabled={loading}>{loading?'Working…':register?'Create account':'Log in'} <ArrowRight size={16}/></button>
       </form>
