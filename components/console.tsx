@@ -65,7 +65,8 @@ export function Console(){
  [usage,setUsage]=useState<Usage|null>(null),[active,setActive]=useState<'agents'|'keys'|'usage'>('agents'),
  [selected,setSelected]=useState<string|null>(null),[label,setLabel]=useState(''),
  [name,setName]=useState(''),[model,setModel]=useState(''),[newKey,setNewKey]=useState(''),
- [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),
+ [error,setError]=useState(''),[notice,setNotice]=useState(''),
+ [scopes,setScopes]=useState<string[]>(['audio:write','usage:read']),[busy,setBusy]=useState(false),
  [loading,setLoading]=useState(true);
  const load=useCallback(async()=>{
   try{
