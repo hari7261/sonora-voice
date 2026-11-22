@@ -91,7 +91,7 @@ export function Console(){
   e.preventDefault();setBusy(true);setError('');setNewKey('');
   try{
    const created=await api<{key:string}>('/api/console/keys','POST',
-     {label,scopes:['audio:write','usage:read']});
+     {label,scopes});
    setNewKey(created.key);setLabel('');await load();
   }catch(e){setError((e as Error).message);}finally{setBusy(false);}
  }
@@ -125,9 +125,9 @@ export function Console(){
   {active==='keys'&&<div className="console-panel">
    <h2><KeyRound size={22}/> Developer API keys</h2>
    <p>Create a private key for server-side speech requests and credit usage. It is displayed only once.</p>
-   <form className="console-form console-form-row" onSubmit={issueKey}>
+   <form className="console-form" onSubmit={issueKey}>
     <label>Key label<input value={label} onChange={e=>setLabel(e.target.value)} placeholder="Production backend" required maxLength={80}/></label>
-    <button className="button button-dark" type="submit" disabled={busy}>{busy?'Creating…':'Create API key'}</button>
+    <div className="console-scope-options">{([["audio:write","Speech synthesis and recognition"],["usage:read","Credit usage"],["agents:read","Read agent settings"],["agents:write","Create, update and delete agents"]] as const).map(([scope,label])=><label key={scope}><input type="checkbox" checked={scopes.includes(scope)} onChange={e=>setScopes(v=>e.target.checked?[...v,scope]:v.filter(x=>x!==scope))}/>{label}</label>)}</div><button className="button button-dark" type="submit" disabled={busy||scopes.length===0}>{busy?'Creating…':'Create API key'}</button>
    </form>
    {newKey&&<div className="console-secret"><strong>Save this key now — it will not be shown again.</strong><code>{newKey}</code><CopyCode text={newKey}/></div>}
    <div>{keys.length===0?<p className="muted">No keys issued yet.</p>:keys.map(k=><div className="console-key-row" key={k.id}>
