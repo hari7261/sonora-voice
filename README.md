@@ -1,6 +1,6 @@
-# Sonora — Voice Infrastructure Website
+# Vāchaspati AI — Voice Infrastructure Website
 
-A responsive, multipage Next.js + TypeScript website for the proposed Sonora speech API and embeddable voice-agent platform.
+A responsive, multipage Next.js + TypeScript website for the proposed Vāchaspati AI speech API and embeddable voice-agent platform.
 
 ## Current state
 
@@ -54,3 +54,7 @@ The design intentionally avoids stock AI gradients, sparkle illustrations, exces
 ## Disclaimer
 
 An installed tool for directly authoring/deploying a website on a connected website-building service was not available in this session, so the deliverable is an editable Next.js source project. No build or browser preview was validated in this isolated runtime because npm dependencies were unavailable offline.
+
+## Animation and accessibility
+
+Uses Motion for React (`motion/react`) for route reveals, viewport entry animations, responsive interactive cards, animated FAQ answers, and a hero typewriter. Animations respect operating-system reduced-motion settings. Design uses premium display typography with high-contrast black/white themes.
