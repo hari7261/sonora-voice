@@ -56,3 +56,44 @@ h1 em,h2 em,.typing-accent{font-family:'Instrument Serif',Georgia,serif;font-sty
 .account-workspace p{color:var(--muted)}
 .dashboard-note{color:var(--muted);max-width:700px;line-height:1.7;margin-bottom:25px}
 @media(max-width:800px){.auth-layout{grid-template-columns:1fr;gap:25px;padding-top:55px}.auth-editorial h1{font-size:3.1rem}.account-dashboard-head{flex-direction:column}}
+
+
+/* Production workspace console */
+.console{margin-top:38px;font-family:'DM Sans',system-ui,sans-serif}
+.console-tabs{display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line);margin-bottom:28px;padding-bottom:10px}
+.console-tabs button{border:0;background:transparent;color:var(--muted);font:700 .92rem var(--heading);cursor:pointer;border-radius:7px;padding:13px 16px;transition:background .25s,color .25s}
+.console-tabs button.active{background:var(--fg);color:var(--bg)}
+.console-panel{min-width:0;background:var(--surface);padding:clamp(18px,3vw,30px);border:1px solid var(--line);border-radius:12px}
+.console-panel h2{font-size:1.55rem;letter-spacing:-.045em;display:flex;gap:12px;align-items:center;margin:0 0 18px}
+.console-panel h3{margin:18px 0 15px}
+.console-grid{display:grid;grid-template-columns:minmax(250px,.75fr) minmax(320px,1.25fr);gap:18px;align-items:start}
+.console-panel p{line-height:1.6;color:var(--muted)}
+.console-agent-item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:17px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);margin:10px 0;cursor:pointer;text-align:left}
+.console-agent-item.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.console-agent-item strong{font:700 .92rem var(--heading)}.console-agent-item span{color:var(--muted);font-size:.78rem}
+.console-form{border-top:1px solid var(--line);margin-top:27px;padding-top:20px;display:grid;gap:16px}
+.console-form-row{display:flex;flex-wrap:wrap;align-items:end;gap:18px}
+.console-form-row label{flex:1;min-width:220px}
+.console-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.console label{display:grid;gap:7px;font:700 .86rem var(--heading);margin-bottom:14px;color:var(--fg)}
+.console input:not([type=color]),.console textarea,.console select{width:100%;font:400 .95rem 'DM Sans',sans-serif;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:7px;padding:12px 13px}
+.console input[type=color]{width:100%;min-height:43px;border:1px solid var(--line);background:var(--bg);padding:5px;border-radius:7px;cursor:pointer}
+.console textarea{resize:vertical;line-height:1.6}
+.console-actions{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0}
+.console-code{margin-top:22px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:16px;min-width:0}
+.console-code pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 var(--mono);color:var(--muted)}
+.console-empty{text-align:center;padding:70px 10px;color:var(--muted)}
+.console-empty svg{margin:0 auto}
+.console-key-row{display:flex;justify-content:space-between;gap:15px;align-items:center;padding:16px 0;border-top:1px solid var(--line)}
+.console-key-row span{display:grid;gap:6px}.console-key-row small{color:var(--muted);font-family:var(--mono)}
+.console-secret{border:1px solid var(--accent);border-radius:9px;padding:17px;display:grid;gap:12px;margin:20px 0;background:var(--bg)}
+.console-secret code{overflow-wrap:anywhere;font-family:var(--mono)}
+.console-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:28px 0}
+.console-metrics>div{padding:24px;background:var(--bg);border:1px solid var(--line);display:grid;gap:16px;border-radius:8px}
+.console-metrics span{font-size:.76rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.console-metrics strong{font:700 clamp(1.2rem,2.5vw,2rem) var(--heading);overflow-wrap:anywhere}
+.console-requests>div{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;padding:14px 5px;border-bottom:1px solid var(--line);font-size:.88rem}
+.console-requests>div span{color:var(--muted)}
+.console-notice{padding:13px;border:1px solid var(--line);background:var(--surface);border-radius:6px}
+@media(max-width:940px){.console-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.console-fields,.console-metrics{grid-template-columns:1fr}.console-tabs button{padding:11px}.console-secret{max-width:calc(100vw - 50px)}}
