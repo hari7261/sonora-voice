@@ -28,6 +28,11 @@ export async function PATCH(req:NextRequest,{params}:P){
     status!==null&&!['draft','active','paused'].includes(status))return apiError('Invalid agent settings');
  try{
   if(status==='active'){
+   if(!process.env.OPENROUTER_API_KEY)return apiError('OpenRouter is not configured',503);
+   const existing=await database().query<{interaction_mode:string}>(`select interaction_mode from ${S}.vachaspati_agents where account_id=$1 and id=$2`,[who.account_id,id]);
+   if(!existing.rows[0])return apiError('Agent not found',404);
+   if(existing.rows[0].interaction_mode.includes('voice')&&(!process.env.SHERPA_INFERENCE_URL||!process.env.SHERPA_WORKER_SECRET))
+    return apiError('Speech worker is not configured',503);
    const chk=await database().query<{count:string}>(`select count(*)::text as count from ${S}.vachaspati_agent_domains
     where agent_id=$1`,[id]);
    if(Number(chk.rows[0]?.count||0)===0)return apiError('Configure allowed domains in the dashboard before publishing');
