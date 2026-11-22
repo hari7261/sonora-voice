@@ -21,7 +21,7 @@ export async function POST(req:NextRequest,{params}:P){
   try{
    const audio=await synthesizeSpeech(text,access.agent.voice_id||'',access.agent.language_code);
    await finishUsage(access.agent.account_id,charge.requestId,'tts',text.length,charge.credits,200);
-   return new Response(Buffer.from(audio),{headers:{...access.headers,'Content-Type':'audio/wav'}});
+   return new Response(Uint8Array.from(audio).buffer as ArrayBuffer,{headers:{...access.headers,'Content-Type':'audio/wav'}});
   }catch{
    await finishUsage(access.agent.account_id,charge.requestId,'tts',text.length,charge.credits,503);
    return widgetError('Voice synthesis currently unavailable',503,access.headers);
