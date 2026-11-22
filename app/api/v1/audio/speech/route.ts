@@ -15,7 +15,7 @@ export async function POST(req:NextRequest){
   try{
    const audio=await synthesizeSpeech(text,voice,language);
    await finishUsage(who.account_id,reservation.requestId,'tts',text.length,reservation.credits,200,who.key_id);
-   return new Response(Buffer.from(audio),{headers:{'Content-Type':'audio/wav','Cache-Control':'no-store','X-Request-Id':reservation.requestId}});
+   return new Response(Uint8Array.from(audio).buffer as ArrayBuffer,{headers:{'Content-Type':'audio/wav','Cache-Control':'no-store','X-Request-Id':reservation.requestId}});
   }catch{
    await finishUsage(who.account_id,reservation.requestId,'tts',text.length,reservation.credits,503,who.key_id);
    return apiError('Speech synthesis worker unavailable',503);
