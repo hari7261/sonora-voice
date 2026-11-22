@@ -35,7 +35,7 @@ export async function PATCH(req:NextRequest,{params}:Params){
   const client=await database().connect();
   try{
    await client.query('begin');
-   const result=await client.query<{id:string;llm_model:string|null}>(`select id,llm_model from ${S}.vachaspati_agents where id=$1 and account_id=$2 for update`,[id,who.account_id]);
+   const result=await client.query<{id:string;llm_model:string|null;interaction_mode:string}>(`select id,llm_model,interaction_mode from ${S}.vachaspati_agents where id=$1 and account_id=$2 for update`,[id,who.account_id]);
    if(!result.rows[0]){await client.query('rollback');return apiError('Agent not found',404);}
    if(domains){
     await client.query(`delete from ${S}.vachaspati_agent_domains where agent_id=$1`,[id]);
@@ -44,6 +44,11 @@ export async function PATCH(req:NextRequest,{params}:Params){
     }
    }
    if(status==='active'){
+    if(!process.env.OPENROUTER_API_KEY){await client.query('rollback');return apiError('OpenRouter is not configured on the server',503);}
+    const activeMode=mode||result.rows[0].interaction_mode;
+    if(activeMode.includes('voice')&&(!process.env.SHERPA_INFERENCE_URL||!process.env.SHERPA_WORKER_SECRET)){
+     await client.query('rollback');return apiError('Native audio worker is not configured: publish as text-only or set up Sherpa',503);
+    }
     const selected=llmModel||result.rows[0].llm_model;
     const domainsResult=await client.query<{count:string}>(`select count(*)::text as count from ${S}.vachaspati_agent_domains where agent_id=$1`,[id]);
     if(!selected||Number(domainsResult.rows[0].count)===0){await client.query('rollback');return apiError('A model and at least one allowed domain are required to publish',400);}
