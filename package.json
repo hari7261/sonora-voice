@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "next": "^15.5.0",
@@ -14,7 +15,8 @@
     "react-dom": "^19.1.0",
     "lucide-react": "^0.468.0",
     "motion": "^12.23.24",
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "typescript": "^5.8.0",
