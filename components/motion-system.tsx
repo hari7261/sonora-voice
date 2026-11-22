@@ -45,6 +45,7 @@ export function MotionStage({children}:{children:React.ReactNode}){
 /** A restrained single-line hero typewriter; static when reduced motion is requested. */
 export function TypingAccent({words}:{words:string[]}){
   const reduce=useReducedMotion();
+  const wordsKey=words.join('|');
   const [index,setIndex]=useState(0);
   const [count,setCount]=useState(words[0]?.length??0);
   useEffect(()=>{
@@ -55,7 +56,7 @@ export function TypingAccent({words}:{words:string[]}){
       else {setIndex(i=>(i+1)%words.length);setCount(0);}
     },count<value.length?70:2200);
     return()=>window.clearTimeout(timer);
-  },[words,index,count,reduce]);
+  },[wordsKey,index,count,reduce]);
   return <em className="typing-accent" aria-label={words[0]}>
     <span aria-hidden="true">{reduce?words[0]:words[index]?.slice(0,count)}</span>
     {!reduce&&<span className="typing-caret" aria-hidden="true"/>}
