@@ -6,7 +6,7 @@ export const models = [
  {slug:'voice-agent-1',name:'Agent',id:'voice-agent-1',tag:'Embeddable agents',category:'Agent',summary:'A voice interface that belongs on your website.',detail:'A configurable voice agent experience with an embeddable widget and an OpenRouter-powered response layer.',features:['Floating website widget','Agent instructions','Brand controls','Domain restrictions'],use:['Product onboarding','Sales qualification','Website FAQs'],endpoint:'Embed script + agent config',input:'User voice',output:'Agent reply',status:'Interactive UI demo'}
 ];
 export const faq = [
- {q:'What is Sonora?',a:'Sonora is a proposed developer-first speech platform. The current website is an interactive product prototype. The live inference APIs and billing services are not deployed yet.'},
+ {q:'What is Vāchaspati AI?',a:'Vāchaspati AI is a proposed developer-first speech platform. The current website is an interactive product prototype. The live inference APIs and billing services are not deployed yet.'},
  {q:'Can I add a voice agent to my website?',a:'Yes. The intended product workflow lets you configure an agent, copy a short script and embed a floating voice widget. The widget on this demo shows the intended interface, not a connected production agent.'},
  {q:'Is Sherpa-ONNX the engine behind every model?',a:'Sherpa-ONNX is the selected inference foundation. Each public model name represents a capability; the actual model weights can vary by language, voice and workload.'},
  {q:'Do you support Kannada, Hindi and Tamil?',a:'Multilingual support is part of the roadmap. Each language must be individually validated for recognition and speech generation before being marked available.'},
