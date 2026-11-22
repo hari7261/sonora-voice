@@ -1,39 +1,72 @@
-# Vāchaspati AI — Voice Agent Platform
+# Vāchaspati AI — Speech and Voice Agent SaaS
 
-Next.js + TypeScript frontend, with a PostgreSQL-backed custom email/password identity layer. Supabase is used **only as the Postgres database host**; this project does **not** use Supabase Auth.
+A Next.js 15 + TypeScript voice infrastructure platform using custom email/password authentication and Supabase-hosted PostgreSQL. **Supabase Auth is not used**. All product tables are in the private `vachaspati_private` schema and begin with `vachaspati_`.
 
-## Current implementation
+## Actual implementation
 
-- Premium multipage website and Motion animations.
-- Custom auth endpoints: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
-- Registration and login forms at `/signup` and `/login`.
-- Authenticated `/dashboard` showing workspaces from the real database.
-- Salted scrypt password hashes, opaque random session tokens (SHA-256 hashes in DB), HttpOnly/Secure/SameSite cookies, origin checks, and database-backed login attempt limiting.
-- Initial schema for agents, model catalog, API keys, quotas, credit ledger, conversations, and usage. Those voice-service features are **not yet operational**.
+- Animated responsive marketing pages with Motion and premium typography.
+- Custom password auth with per-user workspace creation, scrypt password hashing, HttpOnly cookies, random token sessions, session revocation and login throttling.
+- One-time password reset links via the Resend Email API (requires provider credentials).
+- Authenticated dashboard with agent creation/editing/publishing, approved website domains, configurable OpenRouter model and voice ID, API key issuance/revocation and actual credit usage.
+- Tenant-scoped PostgreSQL REST APIs, hashed bearer keys, scope enforcement and rate limiting.
+- OpenRouter text conversations with persisted session history, no hardcoded chat replies.
+- Atomic account credit reservations, configurable rates, failure refunds, daily/weekly/monthly quotas and per-plan concurrent-request limits.
+- `public/widget.js`: real floating Shadow DOM widget with text chat, browser microphone capture, WAV conversion, STT, agent response and TTS playback.
+- Separate `worker/` Node.js service built with Sherpa-ONNX native addons for PCM16 WAV ASR and TTS, configurable by model files.
+- Public catalog comes from the database; models aren't advertised as live until enabled.
+- GitHub CI checks for TypeScript, Next production build and widget/worker script syntax.
 
-## Schema naming requirement
+## Production setup (required before calling the service live)
 
-Every table begins with `vachaspati_` and resides in the private schema `vachaspati_private`. For example:
+1. Configure `DATABASE_URL` in Vercel from the connected Supabase project's **transaction-pooler** Postgres connection string. Keep the password private. The connected database currently has 19 Vāchaspati-prefixed tables. Review migrations before recreating on another database.
+2. Set `APP_ORIGIN` to the exact production site origin (including `https://`).
+3. Set `OPENROUTER_API_KEY` for actual AI replies. Each agent's LLM model is stored in PostgreSQL; `OPENROUTER_DEFAULT_MODEL` is optional.
+4. Deploy `worker/` to a persistent Linux container / VM (Railway, Render or your own host), mount licensed Sherpa-ONNX ASR and TTS weights, then configure `SHERPA_INFERENCE_URL` and matching `SHERPA_WORKER_SECRET` on the Next.js server.
+5. Optional password recovery requires verified `MAIL_FROM` and `RESEND_API_KEY`.
+6. Run `npm install`, `npm run typecheck`, and `npm run build`, and test account creation, agent publishing, real audio, rate limiting and subscription quotas.
+7. Create an account, publish an agent to approved domains, and copy its unique embed snippet from the dashboard.
 
-- `vachaspati_private.vachaspati_users`
-- `vachaspati_private.vachaspati_sessions`
-- `vachaspati_private.vachaspati_agents`
-- `vachaspati_private.vachaspati_api_keys`
+Secrets must **never** be committed to Git, served as `NEXT_PUBLIC_` values, or included in the embed script. Only the published agent ID may be public.
 
-The schema is intentionally not exposed through Supabase's Data API. Server-side parameterized SQL must enforce workspace membership on every resource access. No `auth.users` references, `auth.uid()`-based policies, or Supabase Auth SDKs.
+## API endpoints
 
-## Configuration and deployment
+| Endpoint | Method | Authentication |
+|---|---|---|
+| `/api/auth/register` | POST | Same-origin form |
+| `/api/auth/login` | POST | Same-origin form |
+| `/api/auth/logout` | POST | Session cookie |
+| `/api/auth/me` | GET | Session cookie |
+| `/api/auth/password-reset/request` | POST | Same-origin form |
+| `/api/auth/password-reset/confirm` | POST | One-time reset token |
+| `/api/console/agents` | GET/POST | Owner/admin/developer session |
+| `/api/console/agents/:id` | PATCH/DELETE | Owner/admin/developer session |
+| `/api/console/keys` | GET/POST | Owner/admin/developer session |
+| `/api/console/keys/:id` | DELETE | Owner/admin session |
+| `/api/console/usage` | GET | Workspace session |
+| `/api/v1/agents` | GET/POST | Scoped bearer key |
+| `/api/v1/agents/:id` | GET/PATCH/DELETE | Scoped bearer key |
+| `/api/v1/agents/:id/config` | GET | Approved website origin |
+| `/api/v1/agents/:id/chat` | POST | Approved website origin |
+| `/api/v1/agents/:id/transcribe` | POST | Approved website origin |
+| `/api/v1/agents/:id/speak` | POST | Approved website origin |
+| `/api/v1/audio/transcriptions` | POST | `audio:write` API key |
+| `/api/v1/audio/speech` | POST | `audio:write` API key |
+| `/api/v1/usage` | GET | `usage:read` API key |
+| `/api/public/catalog` | GET | Public |
 
-1. Use a dedicated Supabase PostgreSQL project (do **not** assume an existing unrelated project is safe to modify).
-2. Run `supabase/migrations/202611230001_core_platform.sql` against that database after reviewing it.
-3. Copy `.env.example` to `.env.local`, and supply `DATABASE_URL` using the **Transaction pooler** URL from Supabase Dashboard → Connect. Keep it server-side and secret. Use TLS in production.
-4. Set `APP_ORIGIN` to the exact production site origin.
-5. Run `npm install`, then `npm run build` and `npm run dev`.
+## Limitations / not yet production-verified
 
-The app does not perform DB setup at build time; auth endpoints require an actual database connection at runtime. Until migration and environment variables are configured, they will return an unavailable-service error.
+- Actual production environment credentials aren't stored in this repository. Until configured, the routes return explicit unavailability errors.
+- The native Sherpa worker has code and Docker packaging, but **licensed model weights and compute deployment** are external requirements. Only enabled/tested models should be advertised.
+- Realtime WebSocket streaming, automatic speech interruption, payment checkout, paid subscriptions, and provider-level uptime/error handling are not complete. The widget implements turn-based voice interaction, not sub-second full-duplex streaming.
+- User email verification, a privacy-retention policy, worker-side multi-model localization, and comprehensive browser/e2e security tests require additional release work.
+- Database-backed per-plan concurrency and credits are enforced for the implemented AI calls. Monetary billing is **not** connected. No claims of production readiness are made without passing live integration tests.
 
-## Security and production readiness
+## Resources
 
-Password hashing, session expiration and revocation, CSRF origin protection and basic login throttling are implemented. **Still required before public production launch:** verified email delivery and verification, secure password recovery, proper abuse controls at the edge (IP-spoof-resistant rate limiting), operational audit logs, automated integration/security tests, and a CI-verified production build.
-
-Speech inference, OpenRouter live agent execution, usage billing, embed gateway and real model deployment still require separate implementation and infrastructure. Public-facing demo components are not connected to paid services and should not be described as live APIs.
+- API docs: `/docs`
+- Dashboard: `/dashboard`
+- Worker details: `worker/README.md`
+- Supabase migrations: `supabase/migrations/`
+- Sherpa-ONNX native API: https://k2-fsa.github.io/sherpa/onnx/javascript-api/
+- OpenRouter chat API: https://openrouter.ai/docs/api/api-reference/chat/send-chat-completion-request
