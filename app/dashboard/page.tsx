@@ -3,6 +3,7 @@ import {redirect} from 'next/navigation';
 import {database} from '../../lib/server/db';
 import {currentUser} from '../../lib/server/credentials';
 import {LogoutButton} from '../../components/auth-form';
+import {Console} from '../../components/console';
 export const dynamic='force-dynamic';
 export const metadata={title:'Dashboard'};
 export default async function DashboardPage(){
@@ -16,7 +17,6 @@ export default async function DashboardPage(){
  return <div className="container account-dashboard">
    <div className="account-dashboard-head"><div><p className="eyebrow">ACCOUNT / DASHBOARD</p><h1>Welcome, {user.display_name}.</h1><p>Signed in as {user.email}</p></div><LogoutButton/></div>
    <h2>Your workspaces</h2><div className="account-workspaces">{accounts.rows.map(a=><div key={a.id} className="account-workspace"><h3>{a.name}</h3><p>{a.agent_count} configured agents</p><span className="micro muted">Workspace ID: {a.id}</span></div>)}</div>
-   <p className="dashboard-note">Voice model deployment, API key generation and agent publishing will become available when their production backends are connected. No simulated responses are shown here.</p>
-   <Link className="text-link" href="/docs">Read developer documentation</Link>
+   <Console/>
  </div>;
 }
