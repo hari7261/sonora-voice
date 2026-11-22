@@ -1,0 +1,3 @@
+import {CTA,ModelGrid,PageIntro} from '../../components/sections';
+export const metadata={title:'Models'};
+export default function Models(){return <><PageIntro index="MODEL LIBRARY / 01—05" title="The right voice capability for every idea." desc="Five focused model families. One clean interface. Explore what each capability does, what it accepts, and how it fits into your product."/><section className="container section section-tight"><ModelGrid/><p className="center-note">Model IDs describe planned API capabilities. Underlying speech model weights and production availability are being validated.</p></section><CTA label="Find your starting point."/></>}
