@@ -60,6 +60,9 @@ export async function POST(req:NextRequest,{params}:Params){
     if(!displayName||displayName.length>120)return json({error:'Name must be between 1 and 120 characters.'},400);
     let client;
     try {
+      const identifier='register:'+email+':'+requestIp(req);
+      if(await isLoginRateLimited(identifier))return json({error:'Registration limit exceeded. Try again later.'},429);
+      await recordFailedLogin(identifier);
       const passwordHash=await hashPassword(password);
       client=await database().connect();
       await client.query('begin');
@@ -68,7 +71,8 @@ export async function POST(req:NextRequest,{params}:Params){
         [email,passwordHash,displayName]);
       const userId=created.rows[0].id;
       const createdAccount=await client.query<{id:string}>(
-        'insert into vachaspati_private.vachaspati_accounts(owner_id,name) values($1,$2) returning id',
+        `insert into vachaspati_private.vachaspati_accounts(owner_id,name,plan_id)
+          values($1,$2,(select id from vachaspati_private.vachaspati_plans where enabled=true order by monthly_credits asc limit 1)) returning id`,
         [userId,displayName+' workspace']);
       await client.query(
         'insert into vachaspati_private.vachaspati_account_members(account_id,user_id,role) values($1,$2,$3)',
