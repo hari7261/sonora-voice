@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {usePathname} from 'next/navigation';
-import {motion,animate,useReducedMotion,useScroll,useSpring} from 'motion/react';
+import {motion,animate,useReducedMotion,useScroll,useSpring,stagger} from 'motion/react';
 
 /** Shared motion layer. Sections progressively reveal as they enter view across all routes. */
 export function MotionStage({children}:{children:React.ReactNode}){
@@ -25,6 +25,9 @@ export function MotionStage({children}:{children:React.ReactNode}){
         const element=target as HTMLElement;
         animate(element,{opacity:[.78,1],transform:['translateY(20px)','translateY(0px)']},
           {duration:.72,ease:[.22,1,.36,1]});
+        const textNodes=[...element.querySelectorAll<HTMLElement>('h1,h2,.eyebrow')].slice(0,8);
+        if(textNodes.length)animate(textNodes,{opacity:[.6,1],transform:['translateY(10px)','translateY(0px)']},
+          {duration:.62,delay:stagger(.07,{startDelay:.1}),ease:[.22,1,.36,1]});
         observer.unobserve(element);
       });
     },{threshold:.08,rootMargin:'0px 0px -35px 0px'});
