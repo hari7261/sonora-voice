@@ -1,6 +1,7 @@
 'use client';
 import {useCallback,useEffect,useState} from 'react';
 import {useRouter} from 'next/navigation';
+import {AdminTicketDetail} from './admin-ticket';
 import {motion,AnimatePresence} from 'motion/react';
 import {Activity,AlertTriangle,BarChart3,Box,Check,ChevronRight,ClipboardList,CreditCard,Database,KeyRound,Layers,LockKeyhole,Settings2,Shield,Users,Wallet,Workflow} from 'lucide-react';
 type Role='superadmin'|'operations'|'support'|'finance'|'analyst';
@@ -89,7 +90,7 @@ function CreateRecord({section,save}:{section:Section;save:(d:Record<string,unkn
 export function AdminConsole({role}:{role:Role}){
  const router=useRouter(),[section,setSection]=useState<Section>('overview'),[rows,setRows]=useState<Array<Record<string,unknown>>>([]),
  [stats,setStats]=useState<Record<string,unknown>>({}),[integrations,setIntegrations]=useState<Record<string,boolean>>({}),
- [loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState(''),[offset,setOffset]=useState(0);
+ [loading,setLoading]=useState(true),[ticketId,setTicketId]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[offset,setOffset]=useState(0);
  const load=useCallback(async()=>{
   setLoading(true);setError('');
   try{
@@ -98,7 +99,7 @@ export function AdminConsole({role}:{role:Role}){
   }catch(e){setError((e as Error).message)}finally{setLoading(false)}
  },[section,offset]);
  useEffect(()=>{void load()},[load]);
- function tab(value:Section){setSection(value);setOffset(0);setNotice('');}
+ function tab(value:Section){setSection(value);setOffset(0);setTicketId('');setNotice('');}
  async function change(section:Section,id:string,payload:Record<string,unknown>){
   await request('/api/admin/'+section+'/'+encodeURIComponent(id),'PATCH',payload);
   setNotice('Change recorded in the administrative audit log.');await load();
@@ -135,6 +136,7 @@ export function AdminConsole({role}:{role:Role}){
   if(section==='api_keys'&&['superadmin','operations'].includes(role)&&!row.revoked_at)choices.push(control('Revoke API key',{revoke:true}));
   if(section==='settings'&&['superadmin','operations'].includes(role))choices.push(control('Toggle setting',{value:!row.value}));
   if(section==='announcements'&&['superadmin','operations'].includes(role))choices.push(control(row.published?'Unpublish':'Publish',{published:!row.published}));
+  if(section==='tickets'&&['superadmin','operations','support'].includes(role))choices.push(<button className="admin-inline-btn" onClick={()=>setTicketId(id)}>Open thread</button>);
   if(section==='tickets'&&['superadmin','operations','support'].includes(role))choices.push(<EditAction label="Update status" onCommit={d=>change(section,id,d)} fields={[{name:'status',label:'Status',type:'select',options:['open','in_progress','waiting_customer','resolved','closed'],defaultValue:String(row.status)}]}/>);
   if(section==='incidents'&&['superadmin','operations','support'].includes(role))choices.push(<EditAction label="Update incident" onCommit={d=>change(section,id,d)} fields={[{name:'status',label:'Status',type:'select',options:['investigating','identified','monitoring','resolved'],defaultValue:String(row.status)}]}/>);
   return choices.length?<div className="admin-inline-actions">{choices.map((c,i)=><span key={i}>{c}</span>)}</div>:null;
@@ -164,6 +166,7 @@ export function AdminConsole({role}:{role:Role}){
     {rows.length===0?<p>No records in this category.</p>:<div className="admin-table-scroll"><table className="admin-data-table"><thead><tr>{columns.map(c=><th key={c}>{c.replaceAll('_',' ')}</th>)}<th>Operations</th></tr></thead>
      <tbody>{rows.map((row,i)=><tr key={String(row.id||row.user_id||row.key||row.capability||i)}>{columns.map(c=><td key={c}>{badgeStatus(c,row[c])?
        <span className="admin-cell-badge">{short(row[c])}</span>:<span title={String(row[c]??'')}>{short(row[c])}</span>}</td>)}<td>{controls(row)}</td></tr>)}</tbody></table></div>}
+    {section==='tickets'&&ticketId&&<AdminTicketDetail id={ticketId} onClose={()=>setTicketId('')} onSaved={()=>void load()}/>}
     <div className="admin-pagination"><button className="button button-outline" disabled={offset===0} onClick={()=>setOffset(x=>Math.max(0,x-50))}>Previous 50</button>
      <span>{offset+1}–{offset+rows.length}</span><button className="button button-outline" disabled={rows.length<50} onClick={()=>setOffset(x=>x+50)}>Next 50</button></div>
    </>}
