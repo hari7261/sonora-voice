@@ -4,10 +4,11 @@ import {useRouter} from 'next/navigation';
 import {motion,AnimatePresence} from 'motion/react';
 import {Activity,AlertTriangle,BarChart3,Box,Check,ChevronRight,ClipboardList,CreditCard,Database,KeyRound,Layers,LockKeyhole,Settings2,Shield,Users,Wallet,Workflow} from 'lucide-react';
 type Role='superadmin'|'operations'|'support'|'finance'|'analyst';
-type Section='overview'|'users'|'admins'|'accounts'|'agents'|'models'|'plans'|'rates'|'packages'|'payments'|'usage'|'api_keys'|'settings'|'incidents'|'audit';
+type Section='overview'|'users'|'admins'|'accounts'|'agents'|'models'|'plans'|'rates'|'packages'|'payments'|'usage'|'api_keys'|'settings'|'incidents'|'tickets'|'announcements'|'health'|'audit';
 type AdminData={data?:Array<Record<string,unknown>>;stats?:Record<string,unknown>;integrations?:Record<string,boolean>};
 const icons:Record<Section,React.ElementType>={
  overview:Activity,users:Users,admins:Shield,accounts:Box,agents:Workflow,models:Layers,
+ tickets:ClipboardList,announcements:Layers,health:Activity,
  plans:Wallet,rates:BarChart3,packages:CreditCard,payments:CreditCard,usage:Activity,
  api_keys:KeyRound,settings:Settings2,incidents:AlertTriangle,audit:ClipboardList
 };
@@ -15,14 +16,14 @@ const names:Record<Section,string>={
  overview:'Overview',users:'Users',admins:'Admin roles',accounts:'Workspaces',
  agents:'Agents',models:'Models',plans:'Plans',rates:'Credit rates',
  packages:'Credit packages',payments:'Payments',usage:'API usage',api_keys:'API keys',
- settings:'Platform settings',incidents:'Incidents',audit:'Audit trail'
+ settings:'Platform settings',incidents:'Incidents',tickets:'Support tickets',announcements:'Announcements',health:'Live service health',audit:'Audit trail'
 };
 const available:Record<Role,Section[]>={
- superadmin:['overview','users','admins','accounts','agents','models','plans','rates','packages','payments','usage','api_keys','settings','incidents','audit'],
- operations:['overview','users','accounts','agents','models','usage','api_keys','settings','incidents'],
- support:['overview','users','accounts','agents','api_keys','incidents'],
+ superadmin:['overview','users','admins','accounts','agents','models','plans','rates','packages','payments','usage','api_keys','settings','incidents','tickets','announcements','health','audit'],
+ operations:['overview','users','accounts','agents','models','usage','api_keys','settings','incidents','tickets','announcements','health'],
+ support:['overview','users','accounts','agents','api_keys','incidents','tickets'],
  finance:['overview','accounts','plans','rates','packages','payments','usage'],
- analyst:['overview','users','accounts','agents','models','plans','rates','packages','payments','usage','settings','incidents','audit']
+ analyst:['overview','users','accounts','agents','models','plans','rates','packages','payments','usage','settings','incidents','tickets','announcements','health','audit']
 };
 async function request<T>(url:string,method='GET',body?:Record<string,unknown>):Promise<T>{
  const r=await fetch(url,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});
@@ -64,6 +65,7 @@ const inputConfigs:Partial<Record<Section,{field:string;label:string;type?:'text
  {field:'monthly_limit',label:'Monthly limit',type:'number'},{field:'concurrency_limit',label:'Concurrent requests',type:'number'}],
  packages:[{field:'name',label:'Package name'},{field:'description',label:'Description'},{field:'credits',label:'Credits',type:'number'},{field:'price_paise',label:'Price in INR paise',type:'number'}],
  incidents:[{field:'name',label:'Incident title'},{field:'severity',label:'Severity',type:'select',options:['low','medium','high','critical']},{field:'details',label:'Details',type:'textarea'}],
+ announcements:[{field:'name',label:'Title'},{field:'content',label:'Announcement text',type:'textarea'},{field:'audience',label:'Audience',type:'select',options:['all','developers','billing']}],
  admins:[{field:'user_id',label:'Existing user UUID'},{field:'role',label:'Admin role',type:'select',options:['superadmin','operations','support','finance','analyst']}]
 };
 function CreateRecord({section,save}:{section:Section;save:(d:Record<string,unknown>)=>Promise<void>}){
@@ -132,6 +134,8 @@ export function AdminConsole({role}:{role:Role}){
   }
   if(section==='api_keys'&&['superadmin','operations'].includes(role)&&!row.revoked_at)choices.push(control('Revoke API key',{revoke:true}));
   if(section==='settings'&&['superadmin','operations'].includes(role))choices.push(control('Toggle setting',{value:!row.value}));
+  if(section==='announcements'&&['superadmin','operations'].includes(role))choices.push(control(row.published?'Unpublish':'Publish',{published:!row.published}));
+  if(section==='tickets'&&['superadmin','operations','support'].includes(role))choices.push(<EditAction label="Update status" onCommit={d=>change(section,id,d)} fields={[{name:'status',label:'Status',type:'select',options:['open','in_progress','waiting_customer','resolved','closed'],defaultValue:String(row.status)}]}/>);
   if(section==='incidents'&&['superadmin','operations','support'].includes(role))choices.push(<EditAction label="Update incident" onCommit={d=>change(section,id,d)} fields={[{name:'status',label:'Status',type:'select',options:['investigating','identified','monitoring','resolved'],defaultValue:String(row.status)}]}/>);
   return choices.length?<div className="admin-inline-actions">{choices.map((c,i)=><span key={i}>{c}</span>)}</div>:null;
  }
@@ -156,6 +160,7 @@ export function AdminConsole({role}:{role:Role}){
      <p className="micro muted">Configuration checks confirm presence of environment settings, not service connectivity or model readiness.</p></>}
    {!loading&&section!=='overview'&&<>
     {['superadmin','operations','finance','support'].includes(role)&&<CreateRecord section={section} save={create}/>}
+    {section==='tickets'&&['superadmin','operations','support'].includes(role)&&<p className="micro muted">Select a support ticket ID to open its messages and reply. Ticket status changes are logged.</p>}
     {rows.length===0?<p>No records in this category.</p>:<div className="admin-table-scroll"><table className="admin-data-table"><thead><tr>{columns.map(c=><th key={c}>{c.replaceAll('_',' ')}</th>)}<th>Operations</th></tr></thead>
      <tbody>{rows.map((row,i)=><tr key={String(row.id||row.user_id||row.key||row.capability||i)}>{columns.map(c=><td key={c}>{badgeStatus(c,row[c])?
        <span className="admin-cell-badge">{short(row[c])}</span>:<span title={String(row[c]??'')}>{short(row[c])}</span>}</td>)}<td>{controls(row)}</td></tr>)}</tbody></table></div>}
