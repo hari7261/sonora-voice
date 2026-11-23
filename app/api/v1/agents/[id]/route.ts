@@ -1,5 +1,6 @@
 import {NextRequest} from 'next/server';
 import {database} from '../../../../../lib/server/db';
+import {flag} from '../../../../../lib/server/admin';
 import {apiError,keyWorkspace,readJson,validUuid} from '../../../../../lib/server/platform';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 const S='vachaspati_private';type P={params:Promise<{id:string}>};
@@ -28,6 +29,7 @@ export async function PATCH(req:NextRequest,{params}:P){
     status!==null&&!['draft','active','paused'].includes(status))return apiError('Invalid agent settings');
  try{
   if(status==='active'){
+   if(!await flag('agent_publishing_enabled',true))return apiError('Agent publishing is disabled',403);
    if(!process.env.OPENROUTER_API_KEY)return apiError('OpenRouter is not configured',503);
    const existing=await database().query<{interaction_mode:string}>(`select interaction_mode from ${S}.vachaspati_agents where account_id=$1 and id=$2`,[who.account_id,id]);
    if(!existing.rows[0])return apiError('Agent not found',404);
