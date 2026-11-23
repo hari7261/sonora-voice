@@ -70,9 +70,9 @@ const inputConfigs:Partial<Record<Section,{field:string;label:string;type?:'text
  admins:[{field:'user_id',label:'Existing user UUID'},{field:'role',label:'Admin role',type:'select',options:['superadmin','operations','support','finance','analyst']}]
 };
 function CreateRecord({section,save}:{section:Section;save:(d:Record<string,unknown>)=>Promise<void>}){
- const fields=inputConfigs[section];const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),
+ const fields=inputConfigs[section]||[];const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),
  [error,setError]=useState(''),[form,setForm]=useState<Record<string,string>>({});
- if(!fields)return null;
+ if(fields.length===0)return null;
  async function submit(e:React.FormEvent){e.preventDefault();setError('');setBusy(true);
   try{const payload:Record<string,unknown>={};for(const f of fields){const v=form[f.field]??f.options?.[0]??'';payload[f.field]=f.type==='number'?Number(v):v;}
    await save(payload);setOpen(false);setForm({});}
