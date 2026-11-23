@@ -95,13 +95,13 @@ export async function POST(req:NextRequest,{params}:P){
   }else if(resource==='plans'){
    const code=typeof b.code==='string'?b.code.trim():'';
    const fields=['monthly_credits','daily_limit','weekly_limit','monthly_limit','concurrency_limit'] as const;
-   if(!/^[a-z0-9_-]{2,40}$/.test(code)||!name||name.length>100||fields.some(x=>!Number.isSafeInteger(b[x])||Number(b[x])<0)||Number(b.concurrency_limit)<1)return apiError('Invalid plan values');
+   if(!/^[a-z0-9_-]{2,40}$/.test(code)||!name||name.length>100||fields.some(x=>!Number.isSafeInteger(Number(b[x]))||Number(b[x])<0)||Number(b.concurrency_limit)<1)return apiError('Invalid plan values');
    const r=await database().query<{id:string}>(`insert into ${S}.vachaspati_plans(code,name,monthly_credits,daily_limit,weekly_limit,monthly_limit,concurrency_limit,enabled)
      values($1,$2,$3,$4,$5,$6,$7,false) returning id`,
      [code,name,...fields.map(x=>b[x])]);
    row=r.rows[0];action='plan.created';
   }else if(resource==='packages'){
-   if(!name||name.length>100||!Number.isSafeInteger(b.credits)||Number(b.credits)<1||!Number.isSafeInteger(b.price_paise)||Number(b.price_paise)<100)return apiError('Invalid package values');
+   if(!name||name.length>100||!Number.isSafeInteger(Number(b.credits))||Number(b.credits)<1||!Number.isSafeInteger(Number(b.price_paise))||Number(b.price_paise)<100)return apiError('Invalid package values');
    const r=await database().query<{id:string}>(`insert into ${S}.vachaspati_credit_packages(name,description,credits,price_paise,enabled)
      values($1,$2,$3,$4,false) returning id`,[name,typeof b.description==='string'?b.description.slice(0,500):'',b.credits,b.price_paise]);
    row=r.rows[0];action='package.created';
