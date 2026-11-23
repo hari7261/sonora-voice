@@ -22,7 +22,8 @@ export function AuthForm({mode}:{mode:'login'|'register'}){
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({email,password,...(register?{displayName}:{})}),
       });
-      const data=await response.json() as {ok?:boolean;error?:string};
+      const data=await response.json() as {ok?:boolean;error?:string;verification_required?:boolean;verification_email_sent?:boolean};
+      if(data.verification_required){router.replace('/verify-email');router.refresh();return;}
       if(!response.ok){setError(data.error||'Unable to continue.');return;}
       router.replace('/dashboard');router.refresh();
     }catch{setError('Unable to contact the authentication service.');}
