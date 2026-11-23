@@ -6,7 +6,7 @@ A Next.js 15 + TypeScript voice infrastructure platform using custom email/passw
 
 - Animated responsive marketing pages with Motion and premium typography.
 - Custom password auth with per-user workspace creation, scrypt password hashing, HttpOnly cookies, random token sessions, session revocation and login throttling.
-- One-time password reset links via the Resend Email API (requires provider credentials).
+- One-time password reset links and optional verified-email sign-in through the Resend Email API (requires verified sender and provider credentials).
 - Authenticated dashboard with agent creation/editing/publishing, approved website domains, configurable OpenRouter model and voice ID, API key issuance/revocation and actual credit usage.
 - Tenant-scoped PostgreSQL REST APIs, hashed bearer keys, scope enforcement and rate limiting.
 - OpenRouter text conversations with persisted session history, no hardcoded chat replies.
@@ -18,7 +18,7 @@ A Next.js 15 + TypeScript voice infrastructure platform using custom email/passw
 
 ## Production setup (required before calling the service live)
 
-1. Configure `DATABASE_URL` in Vercel from the connected Supabase project's **transaction-pooler** Postgres connection string. Keep the password private. The connected database currently has 19 Vāchaspati-prefixed tables. Review migrations before recreating on another database.
+1. Configure `DATABASE_URL` in Vercel from the connected Supabase project's **transaction-pooler** Postgres connection string. Keep the password private. The connected database has 33 Vāchaspati-prefixed tables (verified with RLS enabled as of November 23, 2026). Review migrations before recreating on another database.
 2. Set `APP_ORIGIN` to the exact production site origin (including `https://`).
 3. Set `OPENROUTER_API_KEY` for actual AI replies. Each agent's LLM model is stored in PostgreSQL; `OPENROUTER_DEFAULT_MODEL` is optional.
 4. Deploy `worker/` to a persistent Linux container / VM (Railway, Render or your own host), mount licensed Sherpa-ONNX ASR and TTS weights, then configure `SHERPA_INFERENCE_URL` and matching `SHERPA_WORKER_SECRET` on the Next.js server.
@@ -27,6 +27,16 @@ A Next.js 15 + TypeScript voice infrastructure platform using custom email/passw
 7. Create an account, publish an agent to approved domains, and copy its unique embed snippet from the dashboard.
 
 Secrets must **never** be committed to Git, served as `NEXT_PUBLIC_` values, or included in the embed script. Only the published agent ID may be public.
+
+## Super Admin, prepaid billing, live operations
+
+- **Separate MFA-protected operations console:** `/superadmin` with real administrator roles, audit records and staff access controls. No hardcoded administrator identities.
+- **Customer billing:** `/dashboard/billing` with database-configured INR credit packages, real Razorpay orders and signed webhook fulfillment (only after captured payment).
+- **Customer support:** `/dashboard/support` with persistent tickets and threaded replies. Staff can triage tickets and leave private notes in Super Admin.
+- **Operations:** real database and provider health checks, signup/publishing/maintenance toggles, prepaid balance adjustments, platform announcements, incidents, usage and model catalogs.
+- **Full administrator setup runbook:** [SUPERADMIN.md](./SUPERADMIN.md). Read this before trying to grant your first administrator role or configure payment credentials.
+- **Current deployment constraint:** Vercel reports a build-rate-limit failure for the latest commits. This is not a passing production build. Re-run the build after the account's limit is lifted or use an appropriately provisioned deployment environment.
+- **Still incomplete:** actual native speech worker hosting and licensed weights, real payment capture testing, automatic refund settlement, recurring paid subscriptions/invoices and low-latency full-duplex WebSocket speech. Do not advertise these as production ready.
 
 ## API endpoints
 
@@ -53,6 +63,20 @@ Secrets must **never** be committed to Git, served as `NEXT_PUBLIC_` values, or 
 | `/api/v1/audio/speech` | POST | `audio:write` API key |
 | `/api/v1/usage` | GET | `usage:read` API key |
 | `/api/public/catalog` | GET | Public |
+| `/api/auth/verify/request` | POST | Credentials for existing unverified account |
+| `/api/auth/verify/confirm` | POST | Single-use email confirmation token |
+| `/api/billing/packages` | GET | Public |
+| `/api/billing/orders` | GET/POST | User session |
+| `/api/billing/webhook` | POST | Verified Razorpay signature |
+| `/api/support/tickets` | GET/POST | User session |
+| `/api/support/tickets/:id` | GET/POST | Tenant-scoped user session |
+| `/api/admin/auth/login` | POST | Email, password and MFA code |
+| `/api/admin/auth/enroll` | POST | Explicit admin role + account session + password |
+| `/api/admin/auth/confirm` | POST | TOTP enrollment code |
+| `/api/admin/:resource` | GET/POST | Privileged administrator session |
+| `/api/admin/:resource/:id` | PATCH | Role-checked administrator session |
+| `/api/admin/support/:id` | GET/POST | Administrator session |
+| `/api/public/announcements` | GET | Public |
 
 ## Limitations / not yet production-verified
 
