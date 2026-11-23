@@ -3,7 +3,6 @@ import Link from 'next/link';
 import {useEffect,useState} from 'react';
 import {motion} from 'motion/react';
 import {ArrowRight,ArrowUpRight,AudioLines,Braces,Check,Code2,Globe2,Layers3,Mic2,MoveUpRight,ShieldCheck,Volume2,Workflow,Zap} from 'lucide-react';
-import {models} from '../lib/data';
 export function Eyebrow({children}:{children:React.ReactNode}){return <div className="eyebrow"><span className="eyebrow-dash"/>{children}</div>}
 export function SectionHeading({eyebrow,title,desc}:{eyebrow:string,title:string,desc?:string}){return <div className="section-heading"><Eyebrow>{eyebrow}</Eyebrow><h2>{title}</h2>{desc&&<p>{desc}</p>}</div>}
 export function ModelGrid({limit}:{limit?:number}){
