@@ -128,7 +128,7 @@ export function AdminConsole({role}:{role:Role}){
    {name:'credits_per_unit',label:'Credits per unit',type:'number',defaultValue:Number(row.credits_per_unit)},
    {name:'enabled',label:'Enabled',type:'select',options:['true','false'],defaultValue:String(row.enabled)}]}/>);
   if(section==='accounts'&&['superadmin','finance'].includes(role)){
-   choices.push(<EditAction label="Adjust wallet" onCommit={d=>change(section,id,d)} fields=[
+   choices.push(<EditAction label="Adjust wallet" onCommit={d=>change(section,id,d)} fields={[
     {name:'wallet_adjustment',label:'Signed credit adjustment (+/-)',type:'number',defaultValue:0},
     {name:'reason',label:'Auditable reason (10+ chars)'}]}/>);
    choices.push(<EditAction label="Assign plan" onCommit={d=>change(section,id,d)} fields={[{name:'plan_id',label:'Plan UUID'}]}/>);
