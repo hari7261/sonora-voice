@@ -161,3 +161,26 @@ h1 em,h2 em,.typing-accent{font-family:'Instrument Serif',Georgia,serif;font-sty
 .billing-history-head{display:flex;justify-content:space-between;align-items:center;gap:20px}
 @media(max-width:980px){.admin-console-layout{grid-template-columns:1fr}.admin-sidebar{position:static;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));max-height:none}.admin-sidebar button{font-size:.78rem}.admin-sidebar button svg:last-child{display:none}}
 @media(max-width:650px){.admin-stats-grid,.admin-config-grid,.admin-form-grid{grid-template-columns:1fr}.admin-page{padding-top:40px}.admin-main{padding:15px}.admin-section-top{flex-direction:column}.admin-action-form{right:auto;left:-150px}}
+
+/* Customer support and operational incident threads */
+.support-console>h1{font:700 clamp(2.3rem,5vw,4.2rem) var(--heading);letter-spacing:-.05em;margin:20px 0 12px}
+.support-console>p{color:var(--muted);margin-bottom:32px}
+.support-layout{display:grid;grid-template-columns:minmax(250px,.8fr) minmax(300px,1.2fr);gap:20px}
+.support-layout label{display:grid;gap:7px;margin:10px 0;font-size:.85rem;font-weight:600}
+.support-layout input,.support-layout select,.support-layout textarea,.admin-ticket-panel textarea,.admin-ticket-panel select{width:100%;font:400 .94rem var(--font);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:7px;padding:12px}
+.support-item{border:1px solid var(--line);padding:15px;margin:10px 0;width:100%;text-align:left;border-radius:8px;display:grid;gap:8px;color:var(--fg);background:var(--bg);cursor:pointer}
+.support-item.active{border-color:var(--accent)}
+.support-item span{font-size:.77rem;color:var(--muted)}
+.support-messages{max-height:420px;overflow-y:auto;display:grid;gap:13px;margin:18px 0}
+.support-message{background:var(--bg);padding:17px;border:1px solid var(--line);border-radius:8px;overflow-wrap:anywhere}
+.support-message strong{font-size:.87rem;display:block}
+.support-message small{color:var(--muted);display:block;margin:6px 0}
+.support-message p{white-space:pre-wrap;line-height:1.7}
+.support-internal{border-left:3px solid var(--accent)}
+.admin-ticket-panel{margin:26px 0;padding:23px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.admin-ticket-panel label{display:grid;gap:8px;font-size:.85rem}
+.admin-ticket-panel input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.account-announcements{margin:35px 0 44px}
+.account-announcements h2{margin-bottom:20px}
+.account-announcements .account-workspace p{white-space:pre-wrap;line-height:1.6}
+@media(max-width:850px){.support-layout{grid-template-columns:1fr}}
