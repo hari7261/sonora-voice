@@ -4,6 +4,7 @@ import {database} from './db';
 import {sha256} from './credentials';
 import {accountAgent,hostAllowed} from './platform';
 import {generateReply,AiMessage} from './openrouter';
+import {flag} from './admin';
 import {reserveCredits,finishUsage} from './credits';
 const S='vachaspati_private';
 type RuntimeAgent={id:string;account_id:string;name:string;instructions:string;greeting:string;llm_model:string|null;status:string;language_code:string;voice_id:string|null;accent_color:string;interaction_mode:string};
@@ -30,6 +31,7 @@ async function conversation(agentId:string,sessionToken:string|undefined){
  return {id:r.rows[0].id,sessionToken:token};
 }
 export async function agentChat(agent:RuntimeAgent,text:string,token?:string){
+ if(await flag('maintenance_mode',false))throw new Error('PLATFORM_MAINTENANCE');
  if(!agent.llm_model)throw new Error('MODEL_NOT_CONFIGURED');
  if(!text.trim()||text.length>3000)throw new Error('INVALID_MESSAGE');
  const session=await conversation(agent.id,token);
