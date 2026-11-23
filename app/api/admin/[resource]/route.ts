@@ -1,6 +1,7 @@
 import {NextRequest} from 'next/server';
 import {database} from '../../../../lib/server/db';
-import {requireAdmin,audit,flag,type AdminRole} from '../../../../lib/server/admin';
+import {requireAdmin,audit,type AdminRole} from '../../../../lib/server/admin';
+import {recordedHealth} from '../../../../lib/server/service-health';
 import {apiError,readJson,safeOrigin,validUuid} from '../../../../lib/server/platform';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 const S='vachaspati_private';type P={params:Promise<{resource:string}>};
@@ -20,6 +21,9 @@ const acl:Record<string,AdminRole[]> = {
  settings:['superadmin','operations','analyst'],
  incidents:['superadmin','operations','support','analyst'],
  audit:['superadmin','analyst'],
+ tickets:['superadmin','operations','support','analyst'],
+ announcements:['superadmin','operations','analyst'],
+ health:['superadmin','operations','analyst'],
 };
 const reads:Record<string,string> = {
  users:`select id,email,display_name,email_verified_at,disabled_at,created_at from ${S}.vachaspati_users order by created_at desc limit $1 offset $2`,
@@ -35,6 +39,8 @@ const reads:Record<string,string> = {
  api_keys:`select id,account_id,label,key_prefix,scopes,created_at,expires_at,revoked_at from ${S}.vachaspati_api_keys order by created_at desc limit $1 offset $2`,
  settings:`select key,value,description,updated_at from ${S}.vachaspati_platform_settings order by key limit $1 offset $2`,
  incidents:`select id,title,details,severity,status,created_at,resolved_at from ${S}.vachaspati_service_incidents order by created_at desc limit $1 offset $2`,
+ tickets:`select t.id,t.account_id,t.subject,t.category,t.priority,t.status,t.assigned_to,u.email as customer,t.updated_at from ${S}.vachaspati_support_tickets t join ${S}.vachaspati_users u on u.id=t.opened_by order by t.updated_at desc limit $1 offset $2`,
+ announcements:`select id,title,content,audience,published,created_at,updated_at from ${S}.vachaspati_announcements order by created_at desc limit $1 offset $2`,
  audit:`select a.id,a.actor_id,u.email as actor_email,a.action,a.target_type,a.target_id,a.details,a.created_at from ${S}.vachaspati_admin_audit a left join ${S}.vachaspati_users u on u.id=a.actor_id order by a.id desc limit $1 offset $2`
 };
 export async function GET(req:NextRequest,{params}:P){
@@ -42,6 +48,10 @@ export async function GET(req:NextRequest,{params}:P){
  if(!allowed)return apiError('Not found',404);
  try{
   const admin=await requireAdmin(req,allowed);if(!admin)return apiError('Forbidden',403);
+  if(resource==='health'){
+   const checks=await recordedHealth();
+   return Response.json({data:checks},{headers:{'Cache-Control':'no-store'}});
+  }
   if(resource==='overview'){
    const result=await database().query(`
     select
@@ -72,6 +82,7 @@ const canCreate:Record<string,AdminRole[]> = {
  models:['superadmin','operations'],plans:['superadmin','finance'],
  packages:['superadmin','finance'],incidents:['superadmin','operations','support'],
  admins:['superadmin'],
+ announcements:['superadmin','operations'],
 };
 export async function POST(req:NextRequest,{params}:P){
  const resource=(await params).resource,allowed=canCreate[resource];
@@ -105,6 +116,14 @@ export async function POST(req:NextRequest,{params}:P){
    const r=await database().query<{id:string}>(`insert into ${S}.vachaspati_credit_packages(name,description,credits,price_paise,enabled)
      values($1,$2,$3,$4,false) returning id`,[name,typeof b.description==='string'?b.description.slice(0,500):'',b.credits,b.price_paise]);
    row=r.rows[0];action='package.created';
+  }else if(resource==='announcements'){
+   const title=typeof b.name==='string'?b.name.trim():'';
+   const message=typeof b.content==='string'?b.content.trim():'';
+   const audience=typeof b.audience==='string'?b.audience:'all';
+   if(title.length<3||title.length>200||message.length<1||message.length>5000||!['all','developers','billing'].includes(audience))return apiError('Invalid announcement');
+   const r=await database().query<{id:string}>(`insert into ${S}.vachaspati_announcements(title,content,audience,created_by) values($1,$2,$3,$4) returning id`,
+    [title,message,audience,admin.user_id]);
+   row=r.rows[0];action='announcement.created';
   }else if(resource==='incidents'){
    const severity=typeof b.severity==='string'?b.severity:'';
    if(!name||name.length>200||!['low','medium','high','critical'].includes(severity))return apiError('Invalid incident');
