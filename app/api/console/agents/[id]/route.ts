@@ -1,5 +1,6 @@
 import {NextRequest} from 'next/server';
 import {database} from '../../../../../lib/server/db';
+import {flag} from '../../../../../lib/server/admin';
 import {apiError,readJson,safeOrigin,userWorkspace,validUuid} from '../../../../../lib/server/platform';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 const S='vachaspati_private';type Params={params:Promise<{id:string}>};
@@ -44,6 +45,7 @@ export async function PATCH(req:NextRequest,{params}:Params){
     }
    }
    if(status==='active'){
+    if(!await flag('agent_publishing_enabled',true)) {await client.query('rollback');return apiError('Agent publishing is disabled by platform administration',403);}
     if(!process.env.OPENROUTER_API_KEY){await client.query('rollback');return apiError('OpenRouter is not configured on the server',503);}
     const activeMode=mode||result.rows[0].interaction_mode;
     if(activeMode.includes('voice')&&(!process.env.SHERPA_INFERENCE_URL||!process.env.SHERPA_WORKER_SECRET)){
