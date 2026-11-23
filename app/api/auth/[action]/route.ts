@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {database} from '../../../../lib/server/db';
+import {flag} from '../../../../lib/server/admin';
 import {SESSION_COOKIE,createSession,emailAddress,getSessionUser,hashPassword,isLoginRateLimited,passwordAcceptable,recordFailedLogin,revokeSession,sessionCookieOptions,verifyPassword} from '../../../../lib/server/credentials';
 
 export const runtime='nodejs';
@@ -56,6 +57,7 @@ export async function POST(req:NextRequest,{params}:Params){
   if(!email||!passwordAcceptable(data.password))return json({error:'Provide a valid email and a password of 12–128 characters.'},400);
   const password=data.password;
   if(action==='register'){
+    try{if(!await flag('signup_enabled',true))return json({error:'New registrations are temporarily disabled.'},403)}catch{return json({error:'Signup service unavailable'},503)}
     const displayName=typeof data.displayName==='string'?data.displayName.trim():'';
     if(!displayName||displayName.length>120)return json({error:'Name must be between 1 and 120 characters.'},400);
     let client;
