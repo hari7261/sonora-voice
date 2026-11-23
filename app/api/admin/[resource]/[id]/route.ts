@@ -11,7 +11,8 @@ const roles:Record<string,AdminRole[]>={users:['superadmin','support'],admins:['
  agents:['superadmin','operations'],models:['superadmin','operations'],
  plans:['superadmin','finance'],rates:['superadmin','finance'],packages:['superadmin','finance'],
  accounts:['superadmin','finance'],api_keys:['superadmin','operations'],
- settings:['superadmin','operations'],incidents:['superadmin','operations','support']};
+ settings:['superadmin','operations'],incidents:['superadmin','operations','support'],
+ announcements:['superadmin','operations'],tickets:['superadmin','operations','support']};
 const validRoles=['superadmin','operations','support','finance','analyst'];
 export async function PATCH(req:NextRequest,{params}:P){
  const {resource,id}=await params;const allowed=roles[resource];
@@ -78,6 +79,15 @@ export async function PATCH(req:NextRequest,{params}:P){
      rejectAdmin('Verify the email provider configuration before requiring account verification',409);
     const r=await client.query(`update ${S}.vachaspati_platform_settings set value=$2::jsonb,updated_by=$3,updated_at=now() where key=$1 returning key`,
       [id,JSON.stringify(b.value),admin.user_id]);updated=r.rowCount??0;action='setting.updated';
+   }else if(resource==='announcements'){
+    if(!validUuid(id)||typeof b.published!=='boolean')rejectAdmin('Invalid announcement');
+    const r=await client.query(`update ${S}.vachaspati_announcements set published=$2,updated_at=now() where id=$1 returning id`,[id,b.published]);
+    updated=r.rowCount??0;action='announcement.updated';
+   }else if(resource==='tickets'){
+    if(!validUuid(id)||!['open','in_progress','waiting_customer','resolved','closed'].includes(String(b.status)))rejectAdmin('Invalid ticket status');
+    const r=await client.query(`update ${S}.vachaspati_support_tickets set status=$2,updated_at=now(),
+      resolved_at=case when $2 in ('resolved','closed') then now() else null end where id=$1 returning id`,[id,b.status]);
+    updated=r.rowCount??0;action='ticket.status.updated';
    }else if(resource==='incidents'){
     if(!validUuid(id)||!['investigating','identified','monitoring','resolved'].includes(String(b.status)))rejectAdmin('Invalid incident status');
     const r=await client.query(`update ${S}.vachaspati_service_incidents set status=$2,resolved_at=case when $2='resolved' then now() else null end where id=$1 returning id`,[id,b.status]);
