@@ -1,6 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {database} from '../../../../lib/server/db';
 import {flag} from '../../../../lib/server/admin';
+import {sendVerification} from '../../../../lib/server/email-verification';
 import {SESSION_COOKIE,createSession,emailAddress,getSessionUser,hashPassword,isLoginRateLimited,passwordAcceptable,recordFailedLogin,revokeSession,sessionCookieOptions,verifyPassword} from '../../../../lib/server/credentials';
 
 export const runtime='nodejs';
@@ -57,7 +58,13 @@ export async function POST(req:NextRequest,{params}:Params){
   if(!email||!passwordAcceptable(data.password))return json({error:'Provide a valid email and a password of 12–128 characters.'},400);
   const password=data.password;
   if(action==='register'){
-    try{if(!await flag('signup_enabled',true))return json({error:'New registrations are temporarily disabled.'},403)}catch{return json({error:'Signup service unavailable'},503)}
+    let verificationRequired=false;
+    try{
+      if(!await flag('signup_enabled',true))return json({error:'New registrations are temporarily disabled.'},403);
+      verificationRequired=await flag('email_verification_required',false);
+      if(verificationRequired&&(!process.env.RESEND_API_KEY||!process.env.MAIL_FROM||!process.env.APP_ORIGIN))
+        return json({error:'Email verification is not configured by the platform'},503);
+    }catch{return json({error:'Signup service unavailable'},503)}
     const displayName=typeof data.displayName==='string'?data.displayName.trim():'';
     if(!displayName||displayName.length>120)return json({error:'Name must be between 1 and 120 characters.'},400);
     let client;
@@ -80,6 +87,11 @@ export async function POST(req:NextRequest,{params}:Params){
         'insert into vachaspati_private.vachaspati_account_members(account_id,user_id,role) values($1,$2,$3)',
         [createdAccount.rows[0].id,userId,'owner']);
       await client.query('commit');
+      if(verificationRequired){
+        let delivered=true;
+        try{await sendVerification(email,userId);}catch{delivered=false;}
+        return json({ok:true,verification_required:true,verification_email_sent:delivered},201);
+      }
       const token=await createSession(userId);
       const response=json({ok:true,user:{id:userId,email,display_name:displayName}},201);
       response.cookies.set(SESSION_COOKIE,token,sessionCookieOptions());
@@ -93,8 +105,8 @@ export async function POST(req:NextRequest,{params}:Params){
   const identifier='login:'+email+':'+requestIp(req);
   try {
     if(await isLoginRateLimited(identifier))return json({error:'Too many attempts. Please try again later.'},429);
-    const result=await database().query<{id:string;email:string;display_name:string;password_hash:string;disabled_at:Date|null}>(
-      'select id,email,display_name,password_hash,disabled_at from vachaspati_private.vachaspati_users where email=$1 limit 1',[email]);
+    const result=await database().query<{id:string;email:string;display_name:string;password_hash:string;disabled_at:Date|null;email_verified_at:Date|null}>(
+      'select id,email,display_name,password_hash,disabled_at,email_verified_at from vachaspati_private.vachaspati_users where email=$1 limit 1',[email]);
     const user=result.rows[0];
     // Perform an equivalent scrypt operation for unknown users to limit timing disclosure.
     const matches=user?await verifyPassword(password,user.password_hash):(await hashPassword(password),false);
@@ -102,6 +114,8 @@ export async function POST(req:NextRequest,{params}:Params){
       await recordFailedLogin(identifier);
       return json({error:'Invalid email or password.'},401);
     }
+    if(await flag('email_verification_required',false)&&!user.email_verified_at)
+      return json({error:'Please verify your email before signing in.',verification_required:true},403);
     const token=await createSession(user.id);
     const response=json({ok:true,user:{id:user.id,email:user.email,display_name:user.display_name}});
     response.cookies.set(SESSION_COOKIE,token,sessionCookieOptions());
