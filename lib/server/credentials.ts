@@ -53,7 +53,11 @@ export async function getSessionUser(token?:string):Promise<SessionUser|null>{
     from vachaspati_private.vachaspati_sessions s
     join vachaspati_private.vachaspati_users u on u.id=s.user_id
     where s.token_hash=$1 and s.revoked_at is null and s.expires_at>now()
-      and u.disabled_at is null limit 1`,
+      and u.disabled_at is null
+      and (u.email_verified_at is not null or coalesce(
+        (select p.value from vachaspati_private.vachaspati_platform_settings p where p.key='email_verification_required'),
+        'false'::jsonb)='false'::jsonb)
+      limit 1`,
     [sha256(token)]);
   return result.rows[0]??null;
 }
