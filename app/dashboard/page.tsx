@@ -4,6 +4,7 @@ import {database} from '../../lib/server/db';
 import {currentUser} from '../../lib/server/credentials';
 import {LogoutButton} from '../../components/auth-form';
 import {Console} from '../../components/console';
+import {Announcements} from '../../components/announcements';
 export const dynamic='force-dynamic';
 export const metadata={title:'Dashboard'};
 export default async function DashboardPage(){
@@ -17,7 +18,9 @@ export default async function DashboardPage(){
  return <div className="container account-dashboard">
    <div className="account-dashboard-head"><div><p className="eyebrow">ACCOUNT / DASHBOARD</p><h1>Welcome, {user.display_name}.</h1><p>Signed in as {user.email}</p></div><LogoutButton/></div>
    <h2>Your workspaces</h2><div className="account-workspaces">{accounts.rows.map(a=><div key={a.id} className="account-workspace"><h3>{a.name}</h3><p>{a.agent_count} configured agents</p><span className="micro muted">Workspace ID: {a.id}</span></div>)}</div>
-   <p><Link className="button button-outline" href="/dashboard/billing">Billing & prepaid credits</Link></p>
+   <div className="console-actions"><Link className="button button-outline" href="/dashboard/billing">Billing & prepaid credits</Link>
+   <Link className="button button-outline" href="/dashboard/support">Customer support</Link></div>
+   <Announcements/>
    <Console/>
  </div>;
 }
