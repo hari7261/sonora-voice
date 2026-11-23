@@ -1,7 +1,8 @@
 import {NextRequest} from 'next/server';
 import {randomUUID} from 'node:crypto';
 import {database} from '../../../../../lib/server/db';
-import {requireAdmin,type AdminRole} from '../../../../../lib/server/admin';
+import {requireAdmin,flag,type AdminRole} from '../../../../../lib/server/admin';
+import {actualServiceHealth} from '../../../../../lib/server/service-health';
 import {apiError,readJson,safeOrigin,validUuid} from '../../../../../lib/server/platform';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 type P={params:Promise<{resource:string;id:string}>};
@@ -49,10 +50,30 @@ export async function PATCH(req:NextRequest,{params}:P){
     if(updated)await client.query(`update ${S}.vachaspati_admin_sessions set revoked_at=now() where user_id=$1 and revoked_at is null`,[id]);
    }else if(resource==='agents'){
     if(!validUuid(id)||!['draft','active','paused'].includes(String(b.status)))rejectAdmin('Invalid agent status');
+    if(b.status==='active'){
+     if(!await flag('agent_publishing_enabled',true))rejectAdmin('Publishing is disabled',403);
+     const a=await client.query<{llm_model:string|null;interaction_mode:string}>(`select llm_model,interaction_mode from ${S}.vachaspati_agents where id=$1`,[id]);
+     if(!a.rows[0]?.llm_model||!process.env.OPENROUTER_API_KEY)rejectAdmin('OpenRouter model and credentials are required',409);
+     const domains=await client.query<{total:string}>(`select count(*)::text as total from ${S}.vachaspati_agent_domains where agent_id=$1`,[id]);
+     if(Number(domains.rows[0]?.total||0)<1)rejectAdmin('Add at least one approved domain',409);
+     if(a.rows[0].interaction_mode.includes('voice')&&(!process.env.SHERPA_INFERENCE_URL||!process.env.SHERPA_WORKER_SECRET))
+      rejectAdmin('Speech worker must be configured for voice agents',409);
+    }
     const r=await client.query(`update ${S}.vachaspati_agents set status=$2,updated_at=now() where id=$1 returning id`,[id,b.status]);
     updated=r.rowCount??0;action='agent.status.updated';
    }else if(resource==='models'){
     if(!/^[a-z0-9][a-z0-9._-]{2,75}$/.test(id)||typeof b.enabled!=='boolean')rejectAdmin('Invalid model status');
+    if(b.enabled===true){
+     const model=await client.query<{capability:string}>(`select capability from ${S}.vachaspati_voice_models where id=$1`,[id]);
+     if(!model.rows[0])rejectAdmin('Model not found',404);
+     if(model.rows[0].capability==='agent'){
+      if(!process.env.OPENROUTER_API_KEY)rejectAdmin('OpenRouter is not configured',409);
+     }else{
+      if(!process.env.SHERPA_INFERENCE_URL||!process.env.SHERPA_WORKER_SECRET)rejectAdmin('Speech inference worker is not configured',409);
+      const checks=await actualServiceHealth();
+      if(checks.find(c=>c.service==='sherpa')?.status!=='healthy')rejectAdmin('Speech inference worker health check failed',409);
+     }
+    }
     const r=await client.query(`update ${S}.vachaspati_voice_models set enabled=$2 where id=$1 returning id`,[id,b.enabled]);
     updated=r.rowCount??0;action='model.status.updated';
    }else if(resource==='plans'){
