@@ -14,7 +14,9 @@ export async function liveFreeModels(forceFresh=false):Promise<FreeTextModel[]>{
   if(!response.ok)throw new Error('OPENROUTER_CATALOG_'+response.status);
   const body:unknown=await response.json();
   if(!body||typeof body!=='object'||!('data' in body))throw new Error('OPENROUTER_CATALOG_INVALID');
-  return extractFreeTextModels((body as {data:unknown}).data);
+  const models=extractFreeTextModels((body as {data:unknown}).data);
+  if(models.length===0)throw new Error('OPENROUTER_CATALOG_NO_ELIGIBLE_MODELS');
+  return models;
  }finally{clearTimeout(timer);}
 }
 export async function fallbackPreferences():Promise<FallbackPreference[]>{
