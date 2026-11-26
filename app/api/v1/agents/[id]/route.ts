@@ -1,4 +1,5 @@
 import {NextRequest} from 'next/server';
+import {isOpenRouterModelId} from '../../../../../lib/openrouter-free-utils';
 import {database} from '../../../../../lib/server/db';
 import {flag} from '../../../../../lib/server/admin';
 import {apiError,keyWorkspace,readJson,validUuid} from '../../../../../lib/server/platform';
@@ -25,7 +26,7 @@ export async function PATCH(req:NextRequest,{params}:P){
  const greeting=typeof b.greeting==='string'?b.greeting.trim():null;
  const status=typeof b.status==='string'?b.status:null;
  if(name!==null&&(!name||name.length>90)||instructions!==null&&instructions.length>10000||
-    model!==null&&!/^[a-z0-9._/-]{3,120}$/i.test(model)||greeting!==null&&greeting.length>300||
+    model!==null&&!isOpenRouterModelId(model)||greeting!==null&&greeting.length>300||
     status!==null&&!['draft','active','paused'].includes(status))return apiError('Invalid agent settings');
  try{
   if(status==='active'){
