@@ -5,11 +5,12 @@ import {AdminTicketDetail} from './admin-ticket';
 import {motion,AnimatePresence} from 'motion/react';
 import {Activity,AlertTriangle,BarChart3,Box,Check,ChevronRight,ClipboardList,CreditCard,Database,KeyRound,Layers,LockKeyhole,Settings2,Shield,Users,Wallet,Workflow} from 'lucide-react';
 type Role='superadmin'|'operations'|'support'|'finance'|'analyst';
-type Section='overview'|'users'|'admins'|'accounts'|'agents'|'models'|'plans'|'rates'|'packages'|'payments'|'usage'|'api_keys'|'settings'|'incidents'|'tickets'|'announcements'|'health'|'audit';
+type Section='overview'|'users'|'admins'|'accounts'|'agents'|'models'|'plans'|'rates'|'packages'|'payments'|'usage'|'api_keys'|'settings'|'incidents'|'tickets'|'announcements'|'health'|'audit'|'openrouter-fallbacks';
 type AdminData={data?:Array<Record<string,unknown>>;stats?:Record<string,unknown>;integrations?:Record<string,boolean>};
 const icons:Record<Section,React.ElementType>={
  overview:Activity,users:Users,admins:Shield,accounts:Box,agents:Workflow,models:Layers,
  tickets:ClipboardList,announcements:Layers,health:Activity,
+ 'openrouter-fallbacks':Workflow,
  plans:Wallet,rates:BarChart3,packages:CreditCard,payments:CreditCard,usage:Activity,
  api_keys:KeyRound,settings:Settings2,incidents:AlertTriangle,audit:ClipboardList
 };
@@ -17,14 +18,14 @@ const names:Record<Section,string>={
  overview:'Overview',users:'Users',admins:'Admin roles',accounts:'Workspaces',
  agents:'Agents',models:'Models',plans:'Plans',rates:'Credit rates',
  packages:'Credit packages',payments:'Payments',usage:'API usage',api_keys:'API keys',
- settings:'Platform settings',incidents:'Incidents',tickets:'Support tickets',announcements:'Announcements',health:'Live service health',audit:'Audit trail'
+ 'openrouter-fallbacks':'Free AI fallbacks',settings:'Platform settings',incidents:'Incidents',tickets:'Support tickets',announcements:'Announcements',health:'Live service health',audit:'Audit trail'
 };
 const available:Record<Role,Section[]>={
- superadmin:['overview','users','admins','accounts','agents','models','plans','rates','packages','payments','usage','api_keys','settings','incidents','tickets','announcements','health','audit'],
- operations:['overview','users','accounts','agents','models','usage','api_keys','settings','incidents','tickets','announcements','health'],
+ superadmin:['overview','users','admins','accounts','agents','models','openrouter-fallbacks','plans','rates','packages','payments','usage','api_keys','settings','incidents','tickets','announcements','health','audit'],
+ operations:['overview','users','accounts','agents','models','openrouter-fallbacks','usage','api_keys','settings','incidents','tickets','announcements','health'],
  support:['overview','users','accounts','agents','api_keys','incidents','tickets'],
  finance:['overview','accounts','plans','rates','packages','payments','usage'],
- analyst:['overview','users','accounts','agents','models','plans','rates','packages','payments','usage','settings','incidents','tickets','announcements','health','audit']
+ analyst:['overview','users','accounts','agents','models','openrouter-fallbacks','plans','rates','packages','payments','usage','settings','incidents','tickets','announcements','health','audit']
 };
 async function request<T>(url:string,method='GET',body?:Record<string,unknown>):Promise<T>{
  const r=await fetch(url,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});
@@ -101,15 +102,28 @@ export function AdminConsole({role}:{role:Role}){
  useEffect(()=>{void load()},[load]);
  function tab(value:Section){setSection(value);setOffset(0);setTicketId('');setNotice('');}
  async function change(section:Section,id:string,payload:Record<string,unknown>){
-  await request('/api/admin/'+section+'/'+encodeURIComponent(id),'PATCH',payload);
+  if(section==='openrouter-fallbacks'){
+   await request('/api/admin/openrouter-fallbacks','PATCH',{modelId:id,...payload});
+  }else{
+   await request('/api/admin/'+section+'/'+encodeURIComponent(id),'PATCH',payload);
+  }
   setNotice('Change recorded in the administrative audit log.');await load();
  }
  async function create(payload:Record<string,unknown>){
   await request('/api/admin/'+section,'POST',payload);setNotice('Record created.');await load();
  }
+ async function syncFallbacks(){
+  setError('');setNotice('Checking live OpenRouter models…');
+  try{
+   const result=await request<{models:number;nowUnavailable:number}>(
+    '/api/admin/openrouter-fallbacks','POST',{action:'sync'});
+   setNotice('Verified '+result.models+' eligible free chat models; '+result.nowUnavailable+' older entries unavailable.');
+   await load();
+  }catch(e){setNotice('');setError((e as Error).message);}
+ }
  async function signOut(){await request('/api/admin/auth/logout','POST');router.replace('/superadmin/login');router.refresh();}
  function controls(row:Record<string,unknown>){
-  const id=String(row.id||row.user_id||row.key||row.capability||'');
+  const id=String(row.id||row.user_id||row.key||row.capability||row.model_id||'');
   const choices:React.ReactNode[]=[];
   const control=(title:string,data:Record<string,unknown>)=><button className="admin-inline-btn" onClick={async()=>{if(!window.confirm(title+'?'))return;try{await change(section,id,data)}catch(e){setError((e as Error).message)}}}>{title}</button>;
   if(section==='users'&&['superadmin','support'].includes(role))choices.push(control(row.disabled_at?'Reactivate':'Suspend account',{disabled:!row.disabled_at}));
@@ -118,6 +132,12 @@ export function AdminConsole({role}:{role:Role}){
    {name:'role',label:'Role',type:'select',options:['superadmin','operations','support','finance','analyst'],defaultValue:String(row.role)}]}/>);
   if(section==='agents'&&['superadmin','operations'].includes(role))choices.push(<EditAction label="Change status" onCommit={d=>change(section,id,d)} fields={[{name:'status',label:'Status',type:'select',options:['draft','active','paused'],defaultValue:String(row.status)}]}/>);
   if(section==='models'&&['superadmin','operations'].includes(role))choices.push(control(row.enabled?'Disable model':'Enable model',{enabled:!row.enabled}));
+  if(section==='openrouter-fallbacks'&&['superadmin','operations'].includes(role)){
+   choices.push(control(row.enabled?'Disable fallback':'Enable fallback',{enabled:!row.enabled}));
+   choices.push(<EditAction label="Set priority" onCommit={d=>change(section,id,d)} fields={[
+    {name:'priority',label:'Priority (lower = first)',type:'number',defaultValue:Number(row.priority)}
+   ]}/>);
+  }
   if(section==='packages'&&['superadmin','finance'].includes(role))choices.push(control(row.enabled?'Unpublish':'Publish',{enabled:!row.enabled}));
   if(section==='plans'&&['superadmin','finance'].includes(role)){
    choices.push(control(row.enabled?'Disable':'Enable',{enabled:!row.enabled}));
@@ -150,7 +170,11 @@ export function AdminConsole({role}:{role:Role}){
   </nav>
   <main className="admin-main">
    <div className="admin-section-top"><div><p className="eyebrow">CONTROL PLANE / {section.toUpperCase().replaceAll('_',' ')}</p><h2>{names[section]}</h2><p>Live PostgreSQL records. Changes are scoped to your administrator role and audited.</p></div>
-   <button type="button" className="button button-outline" onClick={()=>void load()}>Refresh</button></div>
+   <div className="admin-inline-actions">
+    {section==='openrouter-fallbacks'&&['superadmin','operations'].includes(role)&&
+     <button type="button" className="button button-dark" onClick={()=>void syncFallbacks()}>Verify live free catalog</button>}
+    <button type="button" className="button button-outline" onClick={()=>void load()}>Refresh</button>
+   </div></div>
    {error&&<p className="auth-error" role="alert">{error}</p>}
    {notice&&<p className="admin-notice">{notice}</p>}
    {loading&&<p>Loading real platform data…</p>}
@@ -161,10 +185,11 @@ export function AdminConsole({role}:{role:Role}){
       <div key={k}><span>{k}</span><strong>{v?'Configured':'Not configured'}</strong></div>)}</div>
      <p className="micro muted">Configuration checks confirm presence of environment settings, not service connectivity or model readiness.</p></>}
    {!loading&&section!=='overview'&&<>
+    {section==='openrouter-fallbacks'&&<p className="micro muted">Only live-verified zero-priced text models are routed. Lower priority runs earlier. Disabled entries are excluded; deleted or repriced models are never offered. The selected agent model always remains the primary choice.</p>}
     {['superadmin','operations','finance','support'].includes(role)&&<CreateRecord section={section} save={create}/>}
     {section==='tickets'&&['superadmin','operations','support'].includes(role)&&<p className="micro muted">Select a support ticket ID to open its messages and reply. Ticket status changes are logged.</p>}
     {rows.length===0?<p>No records in this category.</p>:<div className="admin-table-scroll"><table className="admin-data-table"><thead><tr>{columns.map(c=><th key={c}>{c.replaceAll('_',' ')}</th>)}<th>Operations</th></tr></thead>
-     <tbody>{rows.map((row,i)=><tr key={String(row.id||row.user_id||row.key||row.capability||i)}>{columns.map(c=><td key={c}>{badgeStatus(c,row[c])?
+     <tbody>{rows.map((row,i)=><tr key={String(row.id||row.user_id||row.key||row.capability||row.model_id||i)}>{columns.map(c=><td key={c}>{badgeStatus(c,row[c])?
        <span className="admin-cell-badge">{short(row[c])}</span>:<span title={String(row[c]??'')}>{short(row[c])}</span>}</td>)}<td>{controls(row)}</td></tr>)}</tbody></table></div>}
     {section==='tickets'&&ticketId&&<AdminTicketDetail id={ticketId} onClose={()=>setTicketId('')} onSaved={()=>void load()}/>}
     <div className="admin-pagination"><button className="button button-outline" disabled={offset===0} onClick={()=>setOffset(x=>Math.max(0,x-50))}>Previous 50</button>
