@@ -1,4 +1,5 @@
 import {NextRequest} from 'next/server';
+import {isOpenRouterModelId} from '../../../../lib/openrouter-free-utils';
 import {database} from '../../../../lib/server/db';
 import {apiError,createApiKey,readJson,safeOrigin,userWorkspace} from '../../../../lib/server/platform';
 import {getCreditBalance} from '../../../../lib/server/credits';
@@ -62,7 +63,7 @@ export async function POST(req:NextRequest,{params}:Params){
   const llmModel=typeof data.llmModel==='string'?data.llmModel.trim():process.env.OPENROUTER_DEFAULT_MODEL||'';
   if(!nameValue||nameValue.length>90||instructions.length>10000||
       !/^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(language)||
-      !/^[a-z0-9._/-]{3,120}$/i.test(llmModel))return apiError('Specify a valid name, language and OpenRouter model',400);
+      !isOpenRouterModelId(llmModel))return apiError('Specify a valid name, language and OpenRouter model',400);
   const greeting=typeof data.greeting==='string'?data.greeting.trim().slice(0,300):'';
   const created=await database().query<{id:string}>(`
    insert into ${S}.vachaspati_agents(account_id,name,instructions,language_code,llm_model,greeting,status)
