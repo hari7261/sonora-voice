@@ -90,3 +90,19 @@ The current browser widget implements **turn-based voice requests** (record → 
 The repository contains no production secrets, provider account access or licensed model weights. Real operational E2E validation cannot pass until the Vercel environment variables and persistent speech-inference deployment are configured. Recent GitHub checks indicated a **Vercel build-rate limit**; that is not proof of either a successful or failed TypeScript build for the new admin code.
 
 This shared Supabase project also contains unrelated application tables. Do not alter their schema or permissions while deploying Vāchaspati. Prefer a dedicated database role with minimal grants, or a dedicated Supabase project, before handling production customer data.
+
+## OpenRouter free-model failover (November 2026)
+
+New migration: `supabase/migrations/202611260001_openrouter_free_fallbacks.sql`. Apply it to the same Supabase-hosted PostgreSQL database using an authorized database connection. The migration creates the private `vachaspati_openrouter_fallbacks` registry and adds nullable actual-provider-model attribution columns.
+
+In **Super Admin → Free AI fallbacks**, choose **Verify live free catalog**. This checks the official OpenRouter `/api/v1/models` API, recognizes models only when their IDs are `:free` (or `openrouter/free`), both prompt and completion prices are zero, request fees are zero, and both input/output modalities include text. Music, embedding and non-text generation models never qualify.
+
+The dashboard shows current provider-catalog status, administrator enabled state, ordering and last verification. Lower priority runs first; `openrouter/free` is kept last. Newly discovered eligible free chat models are automatically added to the pool. Models that disappear or become non-free cannot be used as fallbacks, even if their database entries remain enabled.
+
+The existing agent-selected `llm_model` is always the **primary**. This can be paid if intentionally selected by the customer; the application **never inserts a paid model as an automatic fallback**. On an OpenRouter catalog error, it uses only the selected primary, rather than assuming that stale listings are still free. The application uses OpenRouter's native ordered `models` routing in a single request. The actual responding model, if reported, is saved with the assistant message after migration.
+
+The global `openrouter_free_fallbacks_enabled` switch under Super Admin → Platform settings disables/enables automatic fallback routing.
+
+**Caveat:** Free providers can be rate limited or temporarily offline. Routing improves resilience but cannot override OpenRouter account quota limits or guarantee responses. The live catalog is refreshed automatically on a short interval and can also be manually synchronized. Model membership is verified; actual inference quality and voice-agent latency still require end-to-end testing.
+
+Automated filter/order tests: `node --experimental-strip-types --test tests/openrouter-fallbacks.test.mjs`.
