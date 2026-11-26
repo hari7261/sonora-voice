@@ -1,4 +1,5 @@
 import {NextRequest} from 'next/server';
+import {isOpenRouterModelId} from '../../../../lib/openrouter-free-utils';
 import {database} from '../../../../lib/server/db';
 import {apiError,keyWorkspace,readJson} from '../../../../lib/server/platform';
 export const runtime='nodejs';export const dynamic='force-dynamic';
@@ -18,7 +19,7 @@ export async function POST(req:NextRequest){
  const instructions=typeof body?.instructions==='string'?body.instructions.trim():'';
  const model=typeof body?.llm_model==='string'?body.llm_model.trim():'';
  const language=typeof body?.language==='string'?body.language.trim():'en';
- if(!name||name.length>90||instructions.length>10000||!/^[a-z0-9._/-]{3,120}$/i.test(model)||
+ if(!name||name.length>90||instructions.length>10000||!isOpenRouterModelId(model)||
     !/^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(language))return apiError('Invalid agent settings',400);
  try{
   const r=await database().query<{id:string}>(`insert into ${S}.vachaspati_agents(account_id,name,instructions,llm_model,language_code,status)
