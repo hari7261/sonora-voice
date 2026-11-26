@@ -1,6 +1,9 @@
 // Pure catalog filtering and ordering, shared by server routes and automated tests.
 export const FREE_ROUTER_ID='openrouter/free';
 export const MODEL_ID_PATTERN=/^[a-zA-Z0-9._/-]+(?::free)?$/;
+export function isOpenRouterModelId(input:unknown):input is string{
+ return typeof input==='string'&&input.length>=3&&input.length<=140&&MODEL_ID_PATTERN.test(input);
+}
 export type OpenRouterCatalogModel={
  id?:unknown;
  name?:unknown;
