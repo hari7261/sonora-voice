@@ -94,7 +94,7 @@ export async function PATCH(req:NextRequest,{params}:P){
     const r=await client.query(`update ${S}.vachaspati_credit_packages set enabled=$2 where id=$1 returning id`,[id,b.enabled]);
     updated=r.rowCount??0;action='package.status.updated';
    }else if(resource==='settings'){
-    if(!['signup_enabled','agent_publishing_enabled','maintenance_mode','email_verification_required'].includes(id)||typeof b.value!=='boolean')rejectAdmin('Unsupported platform setting');
+    if(!['signup_enabled','agent_publishing_enabled','maintenance_mode','email_verification_required','openrouter_free_fallbacks_enabled'].includes(id)||typeof b.value!=='boolean')rejectAdmin('Unsupported platform setting');
     if(id==='maintenance_mode'&&admin.role!=='superadmin')rejectAdmin('Only superadmin may change maintenance mode',403);
     if(id==='email_verification_required'&&b.value===true&&(!process.env.RESEND_API_KEY||!process.env.MAIL_FROM||!process.env.APP_ORIGIN))
      rejectAdmin('Verify the email provider configuration before requiring account verification',409);
