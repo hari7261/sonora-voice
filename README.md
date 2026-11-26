@@ -28,6 +28,12 @@ A Next.js 15 + TypeScript voice infrastructure platform using custom email/passw
 
 Secrets must **never** be committed to Git, served as `NEXT_PUBLIC_` values, or included in the embed script. Only the published agent ID may be public.
 
+## Dynamic free OpenRouter fallback routing
+
+Vāchaspati uses OpenRouter's native single-request `models` failover for agent conversations. The agent's configured model remains first; automatically discovered zero-priced **text-in/text-out** free chat models are appended in an administrator-controlled order. Free model names are refreshed from OpenRouter's live model catalog, rather than trusting old lists or guessing retired model IDs. The application excludes paid, non-text and repriced models and does not select a paid model as an automatic fallback.
+
+Manage the queue in **/superadmin → Free AI fallbacks**: refresh live catalog, disable an individual model, set priority, or toggle the platform-wide fallback setting. Apply `supabase/migrations/202611260001_openrouter_free_fallbacks.sql` to enable persistent preferences and actual-model attribution. If the catalog cannot be verified, only the configured primary model is called. This does not circumvent free-tier rate limits. Automated tests live in `tests/openrouter-fallbacks.test.mjs`.
+
 ## Super Admin, prepaid billing, live operations
 
 - **Separate MFA-protected operations console:** `/superadmin` with real administrator roles, audit records and staff access controls. No hardcoded administrator identities.
