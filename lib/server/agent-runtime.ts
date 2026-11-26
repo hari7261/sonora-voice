@@ -49,11 +49,26 @@ export async function agentChat(agent:RuntimeAgent,text:string,token?:string){
   try{
    await client.query('begin');
    await client.query(`insert into ${S}.vachaspati_messages(conversation_id,role,content)
-     values($1,'user',$2),($1,'assistant',$3)`,[session.id,text,answer]);
+     values($1,'user',$2)`,[session.id,text]);
+   // Prefer recording the exact model OpenRouter reports. The savepoint maintains
+   // compatibility until the optional provider_model_id migration is applied.
+   await client.query('savepoint model_attribution');
+   try{
+    await client.query(`insert into ${S}.vachaspati_messages(conversation_id,role,content,provider_model_id)
+       values($1,'assistant',$2,$3)`,[session.id,answer.text,answer.modelUsed]);
+   }catch(err){
+    await client.query('rollback to savepoint model_attribution');
+    if((err as {code?:string}).code!=='42703')throw err;
+    await client.query(`insert into ${S}.vachaspati_messages(conversation_id,role,content)
+       values($1,'assistant',$2)`,[session.id,answer.text]);
+   }
    await client.query('commit');
   }catch(e){await client.query('rollback');throw e;}finally{client.release();}
   await finishUsage(agent.account_id,reserved.requestId,'agent',1,reserved.credits,200);
-  return {text:answer,sessionToken:session.sessionToken,conversationId:session.id};
+  return {
+   text:answer.text,modelUsed:answer.modelUsed,
+   sessionToken:session.sessionToken,conversationId:session.id
+  };
  }catch(e){
   await finishUsage(agent.account_id,reserved.requestId,'agent',1,reserved.credits,503);
   throw e;
