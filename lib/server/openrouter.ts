@@ -1,23 +1,59 @@
 import 'server-only';
+import {MODEL_ID_PATTERN} from '../openrouter-free-utils';
+import {eligibleModelChain} from './openrouter-fallbacks';
+import {database} from './db';
+
 export type AiMessage={role:'system'|'user'|'assistant';content:string};
-export async function generateReply(model:string,messages:AiMessage[]):Promise<string>{
+export type AiResponse={
+ text:string;
+ modelUsed:string|null;
+ freeFallbacksOffered:number;
+};
+async function fallbackEnabled():Promise<boolean>{
+ const r=await database().query<{value:boolean}>(`
+  select value from vachaspati_private.vachaspati_platform_settings
+  where key='openrouter_free_fallbacks_enabled' limit 1`);
+ return r.rows[0]?.value!==false;
+}
+export async function generateReply(model:string,messages:AiMessage[]):Promise<AiResponse>{
  const apiKey=process.env.OPENROUTER_API_KEY;
  if(!apiKey)throw new Error('OPENROUTER_NOT_CONFIGURED');
- if(!/^[a-z0-9._/-]{3,120}$/i.test(model))throw new Error('INVALID_MODEL');
+ if(model.length>140||!MODEL_ID_PATTERN.test(model))throw new Error('INVALID_MODEL');
+ let models=[model];
+ try{
+  if(await fallbackEnabled())models=await eligibleModelChain(model);
+ }catch(e){
+  // If live pricing/availability cannot be verified, DO NOT use stale or paid fallbacks.
+  // The customer-selected primary is the sole allowed model in this case.
+  console.warn('OpenRouter free fallback catalog unavailable; using selected primary only');
+ }
  const controller=new AbortController();
- const timeout=setTimeout(()=>controller.abort(),30000);
+ const timeout=setTimeout(()=>controller.abort(),45000);
  try{
   const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
    method:'POST',signal:controller.signal,
    headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey,
-     'HTTP-Referer':process.env.APP_ORIGIN||'https://localhost','X-Title':'Vachaspati AI'},
-   body:JSON.stringify({model,temperature:0.5,max_tokens:450,stream:false,messages}),
+    'HTTP-Referer':process.env.APP_ORIGIN||'https://localhost','X-Title':'Vachaspati AI'},
+   body:JSON.stringify({
+     ...(models.length>1?{models}:{model}),
+     max_tokens:1000,
+     stream:false,
+     messages
+   }),
    cache:'no-store',
   });
   if(!res.ok)throw new Error('OPENROUTER_'+res.status);
-  const body=await res.json() as {choices?:Array<{message?:{content?:string|null}}>};
-  const answer=body.choices?.[0]?.message?.content?.trim();
+  const body=await res.json() as {
+    model?:unknown;
+    choices?:Array<{message?:{content?:unknown}}>;
+  };
+  const content=body.choices?.[0]?.message?.content;
+  const answer=typeof content==='string'?content.trim():'';
   if(!answer)throw new Error('OPENROUTER_EMPTY');
-  return answer.slice(0,6000);
+  return {
+    text:answer.slice(0,6000),
+    modelUsed:typeof body.model==='string'?body.model:null,
+    freeFallbacksOffered:Math.max(0,models.length-1)
+  };
  }finally{clearTimeout(timeout);}
 }
