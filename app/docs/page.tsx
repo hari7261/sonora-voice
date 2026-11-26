@@ -55,7 +55,7 @@ export default function Docs(){
     <Code label="CURL" code={tts}/>
    </Block>
    <Block id="agents" title="Voice agent API"><p>Agent configuration is persisted in PostgreSQL. Authorized API callers can list, create, inspect, update and delete agents using <code>GET/POST /api/v1/agents</code> and <code>GET/PATCH/DELETE /api/v1/agents/AGENT_UUID</code>.</p>
-    <p>Public widget chat uses <code>POST /api/v1/agents/AGENT_UUID/chat</code>, requires an approved website origin, and records conversations with an opaque session token. Agent replies are generated via the configured OpenRouter model; no hardcoded answers are used.</p>
+    <p>Public widget chat uses <code>POST /api/v1/agents/AGENT_UUID/chat</code>, requires an approved website origin, and records conversations with an opaque session token. Agent replies are generated via the configured OpenRouter model; no hardcoded answers are used. If that model fails, the gateway can try the current free text-capable OpenRouter fallback pool, in Super Admin priority order. A live catalog check excludes paid and non-chat models. Free-tier rate limits still apply.</p>
     <Code label="WIDGET CONVERSATION" code={chat}/>
    </Block>
    <Block id="limits" title="Credits and quotas"><p>Every successful AI interaction, transcription and synthesis is metered using rates from <code>vachaspati_rates</code>. Requests reserve credits atomically before provider calls. Failure returns the reservation as a refund in the ledger. Daily, weekly and monthly limits, and concurrent-request caps, are enforced on the database.</p>
