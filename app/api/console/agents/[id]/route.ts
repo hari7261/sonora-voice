@@ -1,4 +1,5 @@
 import {NextRequest} from 'next/server';
+import {isOpenRouterModelId} from '../../../../../lib/openrouter-free-utils';
 import {database} from '../../../../../lib/server/db';
 import {flag} from '../../../../../lib/server/admin';
 import {apiError,readJson,safeOrigin,userWorkspace,validUuid} from '../../../../../lib/server/platform';
@@ -27,7 +28,7 @@ export async function PATCH(req:NextRequest,{params}:Params){
   const status=typeof data.status==='string'?data.status:null;
   const domains=Array.isArray(data.domains)?data.domains:null;
   if(name!==null&&(!name||name.length>90)||instructions!==null&&instructions.length>10000||
-     greeting!==null&&greeting.length>300||llmModel!==null&&!/^[a-z0-9._/-]{3,120}$/i.test(llmModel)||
+     greeting!==null&&greeting.length>300||llmModel!==null&&!isOpenRouterModelId(llmModel)||
      language!==null&&!/^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(language)||
      color!==null&&!/^#[0-9a-f]{6}$/i.test(color)||mode!==null&&!['voice-text','voice','text'].includes(mode)||
      status!==null&&!['draft','active','paused'].includes(status)||
