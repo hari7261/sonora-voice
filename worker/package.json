@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.mjs",
+    "start": "node --env-file-if-exists=.env server.mjs",
     "check": "node --check server.mjs"
   },
   "dependencies": {
-    "sherpa-onnx-node": "2.0.2"
+    "sherpa-onnx-node": "^1.13.8"
   }
 }

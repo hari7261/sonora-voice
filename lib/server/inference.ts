@@ -16,12 +16,31 @@ export async function transcribeAudio(audio:ArrayBuffer,format:'audio/wav'|'audi
   return {text:data.text,duration_seconds:data.duration_seconds};
  }finally{clearTimeout(timer);}
 }
+function cleanSpeechText(raw:string):string{
+ return raw
+  .replace(/```[\s\S]*?```/g,' ')
+  .replace(/`([^`]*)`/g,'$1')
+  .replace(/!\[([^\]]*)\]\([^)]*\)/g,'$1')
+  .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')
+  .replace(/^\s{0,3}#{1,6}\s+/gm,'')
+  .replace(/^\s{0,3}[-*•+]\s+/gm,'')
+  .replace(/^\s{0,3}\d+\.\s+/gm,'')
+  .replace(/^\s{0,3}>\s?/gm,'')
+  .replace(/(\*\*|__|\*|_|~~)/g,'')
+  .replace(/[|~^\\<>]/g,' ')
+  .replace(/\s*—\s*|\s*–\s*/g,', ')
+  .replace(/\r?\n+/g,'. ')
+  .replace(/\.\s*\./g,'.')
+  .replace(/\s{2,}/g,' ')
+  .trim();
+}
 export async function synthesizeSpeech(text:string,voice:string,language:string):Promise<Uint8Array>{
  const base=process.env.SHERPA_INFERENCE_URL,secret=process.env.SHERPA_WORKER_SECRET;
  if(!base||!secret)throw new Error('INFERENCE_NOT_CONFIGURED');
+ const spoken=cleanSpeechText(text)||text.trim();
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),60000);
  try{
-  const r=await fetch(new URL('/synthesize',base),{method:'POST',body:JSON.stringify({text,voice,language}),
+  const r=await fetch(new URL('/synthesize',base),{method:'POST',body:JSON.stringify({text:spoken,voice,language}),
    headers:{'Content-Type':'application/json','X-Worker-Secret':secret},cache:'no-store',signal:controller.signal});
   if(!r.ok)throw new Error('INFERENCE_HTTP_'+r.status);
   const bytes=new Uint8Array(await r.arrayBuffer());

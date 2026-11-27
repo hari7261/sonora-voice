@@ -21,18 +21,18 @@ export async function publicThrottle(req:NextRequest,id:string){
  const ip=req.headers.get('x-vercel-forwarded-for')||req.headers.get('cf-connecting-ip')||
    req.headers.get('x-real-ip')||req.headers.get('x-forwarded-for')||'unknown';
  const hash=sha256(id+'|'+origin+'|'+ip.split(',')[0].trim());
- const client=await database().connect();
- try{
-  await client.query('begin');
-  await client.query('select pg_advisory_xact_lock(hashtext($1))',[hash]);
-  const r=await client.query<{total:string}>(`
-   select count(*)::text as total from vachaspati_private.vachaspati_request_limits
-   where request_hash=$1 and attempted_at>now()-interval '1 minute'`,[hash]);
-  if(Number(r.rows[0]?.total??0)>=15){await client.query('rollback');return false;}
-  await client.query('insert into vachaspati_private.vachaspati_request_limits(request_hash) values($1)',[hash]);
-  await client.query('commit');
-  return true;
- }catch(e){await client.query('rollback');throw e;}finally{client.release();}
+ const r=await database().query<{allowed:boolean}>(`
+  with lk as (select pg_advisory_xact_lock(hashtext($1))),
+  recent as (
+   select count(*)::int as total from vachaspati_private.vachaspati_request_limits, lk
+   where request_hash=$1 and attempted_at>now()-interval '1 minute'
+  ),
+  ins as (
+   insert into vachaspati_private.vachaspati_request_limits(request_hash)
+   select $1 from recent where total<15 returning 1
+  )
+  select exists(select 1 from ins) as allowed`,[hash]);
+ return !!r.rows[0]?.allowed;
 }
 export function widgetError(error:string,status=400,headers?:Record<string,string>){
  return Response.json({error},{status,headers});

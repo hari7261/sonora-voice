@@ -11,10 +11,11 @@ export async function OPTIONS(req:NextRequest,{params}:P){
 }
 export async function POST(req:NextRequest,{params}:P){
  try{
-  const id=(await params).id,access=await widgetAccess(req,id);
+  const id=(await params).id;
+  const [access,allowed]=await Promise.all([widgetAccess(req,id),publicThrottle(req,id)]);
   if(!access)return widgetError('Agent not available',403);
   if(!access.agent.interaction_mode.includes('voice'))return widgetError('Voice disabled for this agent',403,access.headers);
-  if(!await publicThrottle(req,id))return widgetError('Too many requests',429,access.headers);
+  if(!allowed)return widgetError('Too many requests',429,access.headers);
   const body=await readJson(req,7000),text=typeof body?.text==='string'?body.text.trim():'';
   if(!text||text.length>5000)return widgetError('Invalid text',400,access.headers);
   const charge=await reserveCredits(access.agent.account_id,'tts',text.length);

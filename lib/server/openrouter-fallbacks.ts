@@ -19,14 +19,20 @@ export async function liveFreeModels(forceFresh=false):Promise<FreeTextModel[]>{
   return models;
  }finally{clearTimeout(timer);}
 }
+let prefsCache:{rows:FallbackPreference[];expires:number}|null=null;
 export async function fallbackPreferences():Promise<FallbackPreference[]>{
+ if(prefsCache&&prefsCache.expires>Date.now())return prefsCache.rows;
  try{
   const r=await database().query<FallbackPreference>(`select model_id,enabled,priority
     from ${S}.vachaspati_openrouter_fallbacks order by priority,model_id`);
+  prefsCache={rows:r.rows,expires:Date.now()+60_000};
   return r.rows;
  }catch(e){
   // Keep the old app working until the new migration is applied.
-  if((e as {code?:string}).code==='42P01')return [];
+  if((e as {code?:string}).code==='42P01'){
+   prefsCache={rows:[],expires:Date.now()+60_000};
+   return [];
+  }
   throw e;
  }
 }

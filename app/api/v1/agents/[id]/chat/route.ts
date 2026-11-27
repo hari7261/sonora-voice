@@ -12,13 +12,13 @@ export async function OPTIONS(req:NextRequest,{params}:P){
 export async function POST(req:NextRequest,{params}:P){
  const id=(await params).id;
  try{
-  const access=await widgetAccess(req,id);
+  const [access,allowed]=await Promise.all([widgetAccess(req,id),publicThrottle(req,id)]);
   if(!access)return widgetError('Agent is unavailable for this domain',403);
   const data=await readJson(req,6000);
   const text=typeof data?.text==='string'?data.text.trim():'';
   const sessionToken=typeof data?.sessionToken==='string'?data.sessionToken:undefined;
   if(!text||text.length>3000)return widgetError('Message must be 1–3000 characters',400,access.headers);
-  if(!await publicThrottle(req,id))return widgetError('Too many requests',429,access.headers);
+  if(!allowed)return widgetError('Too many requests',429,access.headers);
   const result=await agentChat(access.agent,text,sessionToken);
   return Response.json(result,{headers:access.headers});
  }catch(e){

@@ -30,40 +30,48 @@ async function conversation(agentId:string,sessionToken:string|undefined){
  values($1,$2) returning id`,[agentId,sha256(token)]);
  return {id:r.rows[0].id,sessionToken:token};
 }
+let hasProviderModelCol=true;
 export async function agentChat(agent:RuntimeAgent,text:string,token?:string){
- if(await flag('maintenance_mode',false))throw new Error('PLATFORM_MAINTENANCE');
  if(!agent.llm_model)throw new Error('MODEL_NOT_CONFIGURED');
  if(!text.trim()||text.length>3000)throw new Error('INVALID_MESSAGE');
- const session=await conversation(agent.id,token);
- const history=await database().query<{role:'user'|'assistant';content:string}>(`
- select role,content from ${S}.vachaspati_messages where conversation_id=$1
- and role in ('user','assistant') order by created_at desc,id desc limit 20`,[session.id]);
+ const [maintenance,session]=await Promise.all([
+  flag('maintenance_mode',false),
+  conversation(agent.id,token),
+ ]);
+ if(maintenance)throw new Error('PLATFORM_MAINTENANCE');
+ const historyRows=token?(await database().query<{role:'user'|'assistant';content:string}>(`
+  select role,content from ${S}.vachaspati_messages where conversation_id=$1
+  and role in ('user','assistant') order by created_at desc,id desc limit 20`,[session.id])).rows.reverse():[];
+ const voiceHint=agent.interaction_mode.includes('voice')
+  ?' Respond in natural, conversational plain text suitable for speaking aloud. Never use markdown formatting, asterisks, bullet points, dashes, hashtags, code blocks, or emojis.'
+  :'';
  const context:AiMessage[]=[
-  {role:'system',content:agent.instructions||'Assist the visitor accurately and concisely. Do not claim actions you cannot perform.'},
-  ...history.rows.reverse(),
+  {role:'system',content:(agent.instructions||'Assist the visitor accurately and concisely. Do not claim actions you cannot perform.')+voiceHint},
+  ...historyRows,
   {role:'user',content:text}];
  const reserved=await reserveCredits(agent.account_id,'agent',1);
  try{
   const answer=await generateReply(agent.llm_model,context);
-  const client=await database().connect();
-  try{
-   await client.query('begin');
-   await client.query(`insert into ${S}.vachaspati_messages(conversation_id,role,content)
-     values($1,'user',$2)`,[session.id,text]);
-   // Prefer recording the exact model OpenRouter reports. The savepoint maintains
-   // compatibility until the optional provider_model_id migration is applied.
-   await client.query('savepoint model_attribution');
+  if(hasProviderModelCol){
    try{
-    await client.query(`insert into ${S}.vachaspati_messages(conversation_id,role,content,provider_model_id)
-       values($1,'assistant',$2,$3)`,[session.id,answer.text,answer.modelUsed]);
+    await database().query(`
+     with u as (insert into ${S}.vachaspati_messages(conversation_id,role,content) values($1,'user',$2))
+     insert into ${S}.vachaspati_messages(conversation_id,role,content,provider_model_id) values($1,'assistant',$3,$4)`,
+     [session.id,text,answer.text,answer.modelUsed]);
    }catch(err){
-    await client.query('rollback to savepoint model_attribution');
     if((err as {code?:string}).code!=='42703')throw err;
-    await client.query(`insert into ${S}.vachaspati_messages(conversation_id,role,content)
-       values($1,'assistant',$2)`,[session.id,answer.text]);
+    hasProviderModelCol=false;
+    await database().query(`
+     insert into ${S}.vachaspati_messages(conversation_id,role,content)
+     values($1,'user',$2),($1,'assistant',$3)`,
+     [session.id,text,answer.text]);
    }
-   await client.query('commit');
-  }catch(e){await client.query('rollback');throw e;}finally{client.release();}
+  }else{
+   await database().query(`
+    insert into ${S}.vachaspati_messages(conversation_id,role,content)
+    values($1,'user',$2),($1,'assistant',$3)`,
+    [session.id,text,answer.text]);
+  }
   await finishUsage(agent.account_id,reserved.requestId,'agent',1,reserved.credits,200);
   return {
    text:answer.text,modelUsed:answer.modelUsed,

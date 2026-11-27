@@ -9,11 +9,15 @@ export type AiResponse={
  modelUsed:string|null;
  freeFallbacksOffered:number;
 };
+let fallbackCache:{value:boolean;expires:number}|null=null;
 async function fallbackEnabled():Promise<boolean>{
+ if(fallbackCache&&fallbackCache.expires>Date.now())return fallbackCache.value;
  const r=await database().query<{value:boolean}>(`
   select value from vachaspati_private.vachaspati_platform_settings
   where key='openrouter_free_fallbacks_enabled' limit 1`);
- return r.rows[0]?.value!==false;
+ const val=r.rows[0]?.value!==false;
+ fallbackCache={value:val,expires:Date.now()+60_000};
+ return val;
 }
 export async function generateReply(model:string,messages:AiMessage[]):Promise<AiResponse>{
  const apiKey=process.env.OPENROUTER_API_KEY;
@@ -35,8 +39,8 @@ export async function generateReply(model:string,messages:AiMessage[]):Promise<A
    headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey,
     'HTTP-Referer':process.env.APP_ORIGIN||'https://localhost','X-Title':'Vachaspati AI'},
    body:JSON.stringify({
-     ...(models.length>1?{models}:{model}),
-     max_tokens:1000,
+     ...(models.length>1?{models:models.slice(0,3)}:{model}),
+     max_tokens:400,
      stream:false,
      messages
    }),

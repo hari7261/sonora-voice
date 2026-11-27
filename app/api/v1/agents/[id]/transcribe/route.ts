@@ -11,10 +11,11 @@ export async function OPTIONS(req:NextRequest,{params}:P){
 }
 export async function POST(req:NextRequest,{params}:P){
  try{
-  const id=(await params).id,access=await widgetAccess(req,id);
+  const id=(await params).id;
+  const [access,allowed]=await Promise.all([widgetAccess(req,id),publicThrottle(req,id)]);
   if(!access)return widgetError('Agent not available',403);
   if(!access.agent.interaction_mode.includes('voice'))return widgetError('Voice disabled for this agent',403,access.headers);
-  if(!await publicThrottle(req,id))return widgetError('Too many requests',429,access.headers);
+  if(!allowed)return widgetError('Too many requests',429,access.headers);
   if(Number(req.headers.get('content-length')||0)>10*1024*1024+20000)return widgetError('Audio exceeds 10 MB',413,access.headers);
   const form=await req.formData();const file=form.get('file');
   if(!(file instanceof File)||file.size<44||file.size>10*1024*1024)return widgetError('PCM16 WAV audio is required',400,access.headers);

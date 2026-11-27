@@ -8,7 +8,7 @@ export function database(): Pool {
   if (!connectionString) throw new Error('DATABASE_URL is required for Vāchaspati custom authentication');
   if (!pool) {
     pool = new Pool({
-      connectionString, max: 3, connectionTimeoutMillis: 10000, idleTimeoutMillis: 10000,
+      connectionString, max: 10, connectionTimeoutMillis: 10000, idleTimeoutMillis: 30000,
       ssl: process.env.NODE_ENV !== 'production' && process.env.DATABASE_SSL_MODE === 'disable'
         ? false
         : { rejectUnauthorized: true },
