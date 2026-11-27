@@ -28,8 +28,9 @@ export async function POST(req:NextRequest,{params}:P){
   await client.query('begin');
   const ticket=await client.query('update vachaspati_private.vachaspati_support_tickets set status=$2,assigned_to=$3,updated_at=now(),resolved_at=case when $2 in (\'resolved\',\'closed\') then now() else null end where id=$1 returning id',[id,nextStatus,admin.user_id]);
   if(!ticket.rowCount){await client.query('rollback');return apiError('Ticket not found',404);}
-  await client.query('insert into vachaspati_private.vachaspati_support_messages(ticket_id,author_id,content,internal) values($1,$2,$3,$4)',[id,admin.user_id,message,b.internal===true]);
-  await client.query("insert into vachaspati_private.vachaspati_admin_audit(actor_id,action,target_type,target_id,details) values($1,'ticket.replied','support_ticket',$2,$3::jsonb)",[admin.user_id,id,JSON.stringify({status:nextStatus,internal:b.internal===true})]);
+  const isInternal=b?.internal===true;
+  await client.query('insert into vachaspati_private.vachaspati_support_messages(ticket_id,author_id,content,internal) values($1,$2,$3,$4)',[id,admin.user_id,message,isInternal]);
+  await client.query("insert into vachaspati_private.vachaspati_admin_audit(actor_id,action,target_type,target_id,details) values($1,'ticket.replied','support_ticket',$2,$3::jsonb)",[admin.user_id,id,JSON.stringify({status:nextStatus,internal:isInternal})]);
   await client.query('commit');return Response.json({ok:true});
  }catch(e){await client.query('rollback');throw e;}finally{client.release();}
  }catch{return apiError('Unable to process support ticket',503);}
